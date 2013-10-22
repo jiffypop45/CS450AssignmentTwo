@@ -7,11 +7,12 @@
 // macro definitions.
 #include "Angel.h"
 #include <stdio.h>
-
 #ifdef __APPLE__
 #  include <OpenGL/gl3.h>
 #endif
 
+// My includes
+#include <iostream>
 using namespace std;
 typedef Angel::vec4  color4;
 typedef Angel::vec4  point4;
@@ -205,9 +206,38 @@ keyboard( unsigned char key, int x, int y )
 int main(int argc, char** argv)
 {
 	string data_filename = "NO_DATA_FILE";
-	string application_title_info = "CS450AssignmentTwo: Austin Sharp & Padraic McGraw - ";
+	string application_info = "CS450AssignmentTwo: ";
 	string *window_title = new string;
+	GLfloat eye_position[] = { 0., 0., 1., 1.};
+	GLfloat at_position[] = { 0., 0., 0., 1. };
+	GLfloat up_vector[] = { 0., 1., 0., 0. };
 
+	if(argc != 11) {
+		cerr << "USAGE: Expected 10 arguments but found '" << argc << "'" << endl;
+		cerr << "CS450AssignmentTwo SCENE_FILENAME FROM_X FROM_Y FROM_Z AT_X AT_Y AT_Z UP_X UP_Z UP_Y" << endl;
+		cerr << "SCENE_FILENAME: A .scn filename existing in the ./CS450AssignmentTwo/Data/ directory." << endl;
+		cerr << "FROM_X, FROM_Y, FROM_Z*: Floats passed to the LookAt function representing the point in the scene of the eye." << endl;
+		cerr << "AT_X, AT_Y, AT_Z*: Floats passed to the LookAt function representing the point in the scene where the eye is looking." << endl;
+		cerr << "UP_X, UP_Y, UP_Z*: Floats passed to the LookAt function representing the vector that describes the up direction within scene for the eye." << endl;
+		cerr << "*These points and vectors will be converted to a homogenous coordinate system." << endl;
+		return -1;
+	}
+	data_filename = argv[1];
+	eye_position[0] = atof(argv[2]);
+	eye_position[1] = atof(argv[3]);
+	eye_position[2] = atof(argv[4]);
+	at_position[0] = atof(argv[5]);
+	at_position[1] = atof(argv[6]);
+	at_position[2] = atof(argv[7]);
+	up_vector[0] = atof(argv[8]);
+	up_vector[1] = atof(argv[9]);
+	up_vector[2] = atof(argv[10]);
+
+	cout << "Loading scene file: '" << data_filename.c_str() << "'" << endl;
+	cout << "Eye position: {" << eye_position[0] << ", " << eye_position[1] << ", " << eye_position[2] << "}" << endl;
+	cout << "At position: {" << at_position[0] << ", " << at_position[1] << ", " << at_position[2] << "}" << endl;
+	cout << "Up vector: {" << up_vector[0] << ", " << up_vector[1] << ", " << up_vector[2] << "}" << endl;
+	
     glutInit(&argc, argv);
 #ifdef __APPLE__
     glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_RGBA | GLUT_DEPTH);
@@ -216,7 +246,7 @@ int main(int argc, char** argv)
     glutInitContextVersion (3, 2);
     glutInitContextFlags (GLUT_FORWARD_COMPATIBLE);
 #endif
-	window_title->append(application_title_info);
+	window_title->append(application_info);
 	window_title->append(data_filename);
     glutInitWindowSize(512, 512);
     glutInitWindowPosition(500, 300);
