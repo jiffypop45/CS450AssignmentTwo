@@ -49,38 +49,40 @@ point4 vertices[8] = {
 /* ObjObject serves to conveniently package the data found in an obj file. */
 class ObjObject
 {
-	public:
-	  ObjObject();
-	  ObjObject(string filename);
-	  ObjObject(string filename, int vertex_element_size, int texture_coord_element_size, int param_space_vertex_element_size);
-	  int load_from_file(string filename);
-	  int add_vertex(GLfloat vertex_x, GLfloat vertex_y, GLfloat vertex_z, GLfloat vertex_w = NULL);
-	  int add_texture_coord(GLfloat texture_coord_u, GLfloat texture_coord_v, GLfloat texture_coord_w = NULL);
-	  int add_normal(GLfloat normal_x, GLfloat normal_y, GLfloat normal_z);
-	  int add_param_vertex(GLfloat vertex_u, GLfloat vertex_v = NULL, GLfloat vertex_w = NULL);
-	  int get_size_of_vertex_element();
-	  int get_size_of_texture_coord_element();
-	  int get_size_of_param_space_vertex_element();
-	  int get_size_of_face_element();
-	  void set_size_of_vertex_element(int size);
-	  void set_size_of_texture_coord_element(int size);
-	  void set_size_of_param_space_vertex_element(int size);
-	  void set_size_of_face_element(int size);
-	  enum face_data_format {VERTEX, VETEX_TEXTURE, VERTEX_TEXTURE_NORMAL, VERTEX_NORMAL};
-	  face_data_format faces_format;
-	  vector<GLfloat> verticies;
-	  vector<GLfloat> param_space_verticies;
-	  vector<GLfloat> texture_coords;
-	  vector<GLfloat> normals;
-	  vector<GLint> faces;
-	  string filename;
-	  bool bad_file;
-	  bool is_loaded;
-	private:
-	  int size_of_vertex_element;
-	  int size_of_texture_coord_element;
-	  int size_of_param_space_vertex_element;
-	  int size_of_face_element;
+public:
+	ObjObject();
+	ObjObject(string filename);
+	ObjObject(string filename, int vertex_element_size, int texture_coord_element_size, int param_space_vertex_element_size);
+	~ObjObject();
+	int load_from_file(string filename);
+	int add_vertex(GLfloat vertex_x, GLfloat vertex_y, GLfloat vertex_z, GLfloat vertex_w = NULL);
+	int add_texture_coord(GLfloat texture_coord_u, GLfloat texture_coord_v, GLfloat texture_coord_w = NULL);
+	int add_normal(GLfloat normal_x, GLfloat normal_y, GLfloat normal_z);
+	int add_param_vertex(GLfloat vertex_u, GLfloat vertex_v = NULL, GLfloat vertex_w = NULL);
+	int get_size_of_vertex_element();
+	int get_size_of_texture_coord_element();
+	int get_size_of_param_space_vertex_element();
+	int get_size_of_face_element();
+	void set_size_of_vertex_element(int size);
+	void set_size_of_texture_coord_element(int size);
+	void set_size_of_param_space_vertex_element(int size);
+	void set_size_of_face_element(int size);
+	enum face_data_format {VERTEX, VETEX_TEXTURE, VERTEX_TEXTURE_NORMAL, VERTEX_NORMAL};
+	face_data_format faces_format;
+	vector<GLfloat> verticies;
+	vector<GLfloat> param_space_verticies;
+	vector<GLfloat> texture_coords;
+	vector<GLfloat> normals;
+	vector<GLint> faces;
+	string filename;
+	bool is_loaded;
+protected:
+	bool bad_file;
+private:
+	int size_of_vertex_element;
+	int size_of_texture_coord_element;
+	int size_of_param_space_vertex_element;
+	int size_of_face_element;
 };
 
 vector<string> inline StringSplit(const string &source, const char *delimiter = " ", bool keepEmpty = false)
@@ -108,6 +110,14 @@ vector<string> inline StringSplit(const string &source, const char *delimiter = 
 }
 
 
+ObjObject::~ObjObject()
+{
+	size_of_vertex_element = NULL;
+	size_of_texture_coord_element = NULL;
+	size_of_param_space_vertex_element = NULL;
+	size_of_face_element = NULL;
+	bad_file = NULL;
+}
 ObjObject::ObjObject()
 {
 	size_of_vertex_element = 3;
@@ -219,7 +229,7 @@ int ObjObject::load_from_file(string in_filename)
 	filename = in_filename;
 	ifstream in_file(in_filename);
 	string line;
-	GLfloat x, y, z, w, u, v;
+	GLfloat comp0, comp1, comp2, comp3; // generic names for components of various points/vectors in the obj file
 	int vertex_size;
 	int status = -1;
 	if(in_file.is_open())
@@ -234,44 +244,53 @@ int ObjObject::load_from_file(string in_filename)
 					vertex_size = tokens.size() - 1;
 					this->set_size_of_vertex_element(vertex_size);
 					vertex_size = this->get_size_of_vertex_element();
-					x = atof(tokens[1].c_str());
-					y = atof(tokens[2].c_str());
-					z = atof(tokens[3].c_str());
-					w = NULL;
+					comp0 = atof(tokens[1].c_str());
+					comp1 = atof(tokens[2].c_str());
+					comp2 = atof(tokens[3].c_str());
+
+					comp3 = NULL;
 					if(this->get_size_of_vertex_element() == 4)
-						w = atof(tokens[4].c_str());
-					this->add_vertex(x, y, z, w);
+						comp3 = atof(tokens[4].c_str());
+
+					this->add_vertex(comp0, comp1, comp2, comp3);
 					break;
 				}  else if(tokens[0] == "vt") {
 					this->set_size_of_texture_coord_element(tokens.size() - 1);
-					u = atof(tokens[1].c_str());
-					v = atof(tokens[2].c_str());
-					w = NULL;
+					comp0 = atof(tokens[1].c_str());
+					comp1 = atof(tokens[2].c_str());
+
+					comp2 = NULL;
 					if(this->get_size_of_texture_coord_element() == 3)
-						w = atof(tokens[1].c_str());
-					this->add_texture_coord(u, v, w);
+						comp3 = atof(tokens[1].c_str());
+
+					this->add_texture_coord(comp0, comp1, comp2);
 					break;
 				} else if(tokens[0] == "vn") {
-					x = atof(tokens[1].c_str());
-					y = atof(tokens[2].c_str());
-					z = atof(tokens[3].c_str());
-					this->add_normal(x, y, z);
+					comp0 = atof(tokens[1].c_str());
+					comp1 = atof(tokens[2].c_str());
+					comp2 = atof(tokens[3].c_str());
+
+					this->add_normal(comp0, comp1, comp2);
 					break;
 				} else if(tokens[0] == "vp") {
 					this->set_size_of_param_space_vertex_element(tokens.size() - 1);
-					u = atof(tokens[1].c_str());
-					v = NULL;
-					w = NULL;
+					comp0 = atof(tokens[1].c_str());
+
+					comp1 = NULL;
+					comp2 = NULL;
 					if(this->get_size_of_param_space_vertex_element() >= 2)
-						v = atof(tokens[2].c_str());
+						comp1 = atof(tokens[2].c_str());
+
 					if(this->get_size_of_param_space_vertex_element() == 3)
-						w = atof(tokens[3].c_str());
-					this->add_param_vertex(u, v, w);
+						comp2 = atof(tokens[3].c_str());
+
+					this->add_param_vertex(comp0, comp1, comp2);
 					break;
 				} else if(tokens[0] == "f") {
 					vector<string> f1 = StringSplit(tokens[1], "/");
 					vector<string> f2 = StringSplit(tokens[2], "/");
 					vector<string> f3 = StringSplit(tokens[3], "/");
+					// TODO: Not sure how faces should be loaded into vectors
 					this->set_size_of_face_element(f1.size());
 					break;
 				} else {
@@ -293,6 +312,7 @@ int ObjObject::load_from_file(string in_filename)
 	return status;
 }
 // END: ObjObject implementation
+
 int load_scene_by_file(string filename, vector<string>& obj_filename_list)
 {
 	ifstream input_scene_file;
