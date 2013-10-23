@@ -24,12 +24,12 @@
     <ClInclude Include="include\vec.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\fshader32.glsl" />
-    <None Include="src\vshader32.glsl" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="src\InitShader.cpp" />
     <ClCompile Include="src\CS450AssignmentTwo.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\fshader.glsl" />
+    <None Include="src\vshader.glsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{44CDD105-9D58-41B8-9EF0-3924866DF065}</ProjectGuid>
@@ -74,6 +74,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
