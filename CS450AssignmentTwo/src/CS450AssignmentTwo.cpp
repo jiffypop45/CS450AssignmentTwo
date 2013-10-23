@@ -76,7 +76,6 @@ public:
 	vector<GLint> faces;
 	string filename;
 	bool is_loaded;
-protected:
 	bool bad_file;
 private:
 	int size_of_vertex_element;
@@ -292,6 +291,9 @@ int ObjObject::load_from_file(string in_filename)
 					vector<string> f3 = StringSplit(tokens[3], "/");
 					// TODO: Not sure how faces should be loaded into vectors
 					this->set_size_of_face_element(f1.size());
+					break;
+				} else if(tokens[0] == "#") {
+					// This is a comment line
 					break;
 				} else {
 					// TODO: This catches the first three lines of obj file which contains file validation data. Need to handle these three lines instead of falling through here.
