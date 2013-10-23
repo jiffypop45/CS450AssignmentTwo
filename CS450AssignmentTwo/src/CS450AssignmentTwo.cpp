@@ -50,34 +50,38 @@ point4 vertices[8] = {
 class ObjObject
 {
 public:
+	// constructors & destructors
 	ObjObject();
 	ObjObject(string filename);
 	ObjObject(string filename, int vertex_element_size, int texture_coord_element_size, int param_space_vertex_element_size);
 	~ObjObject();
+
+	// methods
 	int load_from_file(string filename);
 	int add_vertex(GLfloat vertex_x, GLfloat vertex_y, GLfloat vertex_z, GLfloat vertex_w = NULL);
 	int add_texture_coord(GLfloat texture_coord_u, GLfloat texture_coord_v, GLfloat texture_coord_w = NULL);
 	int add_normal(GLfloat normal_x, GLfloat normal_y, GLfloat normal_z);
 	int add_param_vertex(GLfloat vertex_u, GLfloat vertex_v = NULL, GLfloat vertex_w = NULL);
-	int get_size_of_vertex_element();
-	int get_size_of_texture_coord_element();
-	int get_size_of_param_space_vertex_element();
-	int get_size_of_face_element();
-	void set_size_of_vertex_element(int size);
-	void set_size_of_texture_coord_element(int size);
-	void set_size_of_param_space_vertex_element(int size);
-	void set_size_of_face_element(int size);
-	enum face_data_format {VERTEX, VETEX_TEXTURE, VERTEX_TEXTURE_NORMAL, VERTEX_NORMAL};
+
+	// data
+	enum face_data_format {
+		VERTEX, 
+		VETEX_TEXTURE, 
+		VERTEX_TEXTURE_NORMAL, 
+		VERTEX_NORMAL
+	};
 	face_data_format faces_format;
-	vector<GLfloat> verticies;
-	vector<GLfloat> param_space_verticies;
+	vector<GLfloat> vertices;
+	vector<GLfloat> param_space_vertices;
 	vector<GLfloat> texture_coords;
 	vector<GLfloat> normals;
 	vector<GLint> faces;
+
+	// file characteristics / metadata
 	string filename;
 	bool is_loaded;
 	bool bad_file;
-private:
+
 	int size_of_vertex_element;
 	int size_of_texture_coord_element;
 	int size_of_param_space_vertex_element;
@@ -146,47 +150,15 @@ ObjObject::ObjObject(string in_filename, int vertex_element_size, int texture_co
 	this->load_from_file(filename);
 }
 
-int ObjObject::get_size_of_vertex_element() 
-{
-	return this->size_of_vertex_element;
-}
-int ObjObject::get_size_of_texture_coord_element() 
-{
-	return this->size_of_texture_coord_element;
-}
-int ObjObject::get_size_of_param_space_vertex_element() 
-{
-	return this->size_of_param_space_vertex_element;
-}
-int ObjObject::get_size_of_face_element() 
-{
-	return this->size_of_face_element;
-}
-void ObjObject::set_size_of_vertex_element(int size)
-{
-	this->size_of_vertex_element = size;
-}
-void ObjObject::set_size_of_texture_coord_element(int size)
-{
-	this->size_of_texture_coord_element = size;
-}
-void ObjObject::set_size_of_param_space_vertex_element(int size)
-{
-	this->size_of_param_space_vertex_element = size;
-}
-void ObjObject::set_size_of_face_element(int size)
-{
-	this->size_of_face_element = size;
-}
 int ObjObject::add_vertex(GLfloat vertex_x, GLfloat vertex_y, GLfloat vertex_z, GLfloat vertex_w)
 {
-	this->verticies.push_back(vertex_x);
-	this->verticies.push_back(vertex_y);
-	this->verticies.push_back(vertex_z);
+	this->vertices.push_back(vertex_x);
+	this->vertices.push_back(vertex_y);
+	this->vertices.push_back(vertex_z);
 
 	if(this->size_of_vertex_element == 4)
-		this->verticies.push_back(vertex_w);
-	return this->verticies.size();
+		this->vertices.push_back(vertex_w);
+	return this->vertices.size();
 }
 
 int ObjObject::add_texture_coord(GLfloat texture_coord_u, GLfloat texture_coord_v, GLfloat texture_coord_w)
@@ -212,15 +184,15 @@ int ObjObject::add_param_vertex(GLfloat vertex_u, GLfloat vertex_v, GLfloat vert
 {
 	int element_size = this->size_of_param_space_vertex_element;
 
-	this->param_space_verticies.push_back(vertex_u);
+	this->param_space_vertices.push_back(vertex_u);
 
 	if(element_size >= 2)
-		this->param_space_verticies.push_back(vertex_v);
+		this->param_space_vertices.push_back(vertex_v);
 
 	if(element_size == 3)
-		this->param_space_verticies.push_back(vertex_w);
+		this->param_space_vertices.push_back(vertex_w);
 
-	return this->param_space_verticies.size();
+	return this->param_space_vertices.size();
 }
 
 int ObjObject::load_from_file(string in_filename)
@@ -241,25 +213,24 @@ int ObjObject::load_from_file(string in_filename)
 				if(tokens[0] == "v") 
 				{
 					vertex_size = tokens.size() - 1;
-					this->set_size_of_vertex_element(vertex_size);
-					vertex_size = this->get_size_of_vertex_element();
+					size_of_vertex_element = vertex_size;
 					comp0 = atof(tokens[1].c_str());
 					comp1 = atof(tokens[2].c_str());
 					comp2 = atof(tokens[3].c_str());
 
 					comp3 = NULL;
-					if(this->get_size_of_vertex_element() == 4)
+					if(size_of_vertex_element == 4)
 						comp3 = atof(tokens[4].c_str());
 
 					this->add_vertex(comp0, comp1, comp2, comp3);
 					break;
 				}  else if(tokens[0] == "vt") {
-					this->set_size_of_texture_coord_element(tokens.size() - 1);
+					size_of_texture_coord_element = (tokens.size() - 1);
 					comp0 = atof(tokens[1].c_str());
 					comp1 = atof(tokens[2].c_str());
 
 					comp2 = NULL;
-					if(this->get_size_of_texture_coord_element() == 3)
+					if(size_of_texture_coord_element == 3)
 						comp3 = atof(tokens[1].c_str());
 
 					this->add_texture_coord(comp0, comp1, comp2);
@@ -272,15 +243,15 @@ int ObjObject::load_from_file(string in_filename)
 					this->add_normal(comp0, comp1, comp2);
 					break;
 				} else if(tokens[0] == "vp") {
-					this->set_size_of_param_space_vertex_element(tokens.size() - 1);
+					size_of_param_space_vertex_element = (tokens.size() - 1);
 					comp0 = atof(tokens[1].c_str());
 
 					comp1 = NULL;
 					comp2 = NULL;
-					if(this->get_size_of_param_space_vertex_element() >= 2)
+					if(size_of_param_space_vertex_element >= 2)
 						comp1 = atof(tokens[2].c_str());
 
-					if(this->get_size_of_param_space_vertex_element() == 3)
+					if(size_of_param_space_vertex_element == 3)
 						comp2 = atof(tokens[3].c_str());
 
 					this->add_param_vertex(comp0, comp1, comp2);
@@ -290,7 +261,7 @@ int ObjObject::load_from_file(string in_filename)
 					vector<string> f2 = StringSplit(tokens[2], "/");
 					vector<string> f3 = StringSplit(tokens[3], "/");
 					// TODO: Not sure how faces should be loaded into vectors
-					this->set_size_of_face_element(f1.size());
+					size_of_face_element = (f1.size());
 					break;
 				} else if(tokens[0] == "#") {
 					// This is a comment line
