@@ -357,6 +357,8 @@ init()
 {
     colorcube();
 
+	// TODO: Use one vao and for each obj use one vbo for the verteceis  and one for normals.
+
     // Create a vertex array object
     GLuint vao;
     glGenVertexArrays( 1, &vao );
