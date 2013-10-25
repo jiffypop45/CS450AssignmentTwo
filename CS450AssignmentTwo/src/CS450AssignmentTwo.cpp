@@ -397,13 +397,12 @@ int load_scene_by_file(string filename, vector<string>& obj_filename_list)
 
 
 //----------------------------------------------------------------------------
-
+// Should do something aobut these globals
 // Create a vertex array object
 GLuint vao;
 
 GLuint buffers[2];
-GLint num_n_indicies;
-GLint num_v_indicies;
+GLint num_indicies;
 
 // OpenGL initialization
 void
@@ -417,15 +416,12 @@ init()
 	
 	auto vertex_data = tmp->vertices.data();
 	auto normal_data = tmp->normals.data();
-	auto vindicies_data = tmp->vertex_faces.data();
-	auto nindicies_data = tmp->normal_faces.data();
+	auto indicies_data = tmp->vertex_faces.data();
 
 	auto num_bytes_vertex_data = sizeof(GLfloat) * tmp->vertices.size();
 	auto num_bytes_normal_data = sizeof(GLfloat) * tmp->normals.size();
-	auto num_bytes_vindicies = sizeof(GLuint) * tmp->vertex_faces.size();
-	auto num_bytes_nindicies = sizeof(GLuint) * tmp->normal_faces.size();
-	num_v_indicies = tmp->vertex_faces.size();
-	num_n_indicies = tmp->normal_faces.size();
+	auto num_bytes_indicies = sizeof(GLuint) * tmp->vertex_faces.size();
+	num_indicies = tmp->vertex_faces.size();
 
 	glBindBuffer( GL_ARRAY_BUFFER, buffers[0] );
 	glBufferData( GL_ARRAY_BUFFER, num_bytes_vertex_data + num_bytes_normal_data, NULL, GL_STATIC_DRAW );
@@ -433,9 +429,8 @@ init()
 	glBufferSubData( GL_ARRAY_BUFFER, num_bytes_vertex_data, num_bytes_normal_data, normal_data );
 
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[1] );
-	glBufferData( GL_ELEMENT_ARRAY_BUFFER, num_bytes_vindicies + num_bytes_nindicies, NULL, GL_STATIC_DRAW );
-	glBufferSubData( GL_ELEMENT_ARRAY_BUFFER, 0, num_bytes_vindicies, vindicies_data );
-	glBufferSubData( GL_ELEMENT_ARRAY_BUFFER, num_bytes_vindicies, num_bytes_nindicies, nindicies_data );
+	glBufferData( GL_ELEMENT_ARRAY_BUFFER, num_bytes_indicies, NULL, GL_STATIC_DRAW );
+	glBufferSubData( GL_ELEMENT_ARRAY_BUFFER, 0, num_bytes_indicies, indicies_data );
 
     // Load shaders and use the resulting shader program
     GLuint program = InitShader( "./src/vshader.glsl", "./src/fshader.glsl" );
@@ -448,11 +443,10 @@ init()
     glVertexAttribPointer( vPosition, tmp->vertex_element_size, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(0) );
 
-	glBindBuffer( GL_ARRAY_BUFFER, buffers[1] );
     GLuint vNormal = glGetAttribLocation( program, "vNormal" );
     glEnableVertexAttribArray( vNormal );
     glVertexAttribPointer( vNormal, 3, GL_FLOAT, GL_FALSE, 0,
-			   BUFFER_OFFSET(0) );
+		BUFFER_OFFSET(num_bytes_normal_data) );
 
 
     // Initialize shader lighting parameters
@@ -491,8 +485,8 @@ init()
 
 
 
-    mat4 p = Perspective(30, 1.0, 0.1, 10.0);
-    point4  eye( 1.0, 1.0, 2.0, 1.0);
+    mat4 p = Perspective(45, 1.0, 0.1, 10.0);
+    point4  eye( 0.0, 1.0, 1.0, 1.0);
     point4  at( 0.0, 0.0, 0.0, 1.0 );
     vec4    up( 0.0, 1.0, 0.0, 0.0 );
 
@@ -514,8 +508,8 @@ void
 display( void )
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-	glDrawElements( GL_TRIANGLES, num_v_indicies, GL_UNSIGNED_INT, (void *)0);
-	glDrawElements( GL_TRIANGLES, num_n_indicies, GL_UNSIGNED_INT, (void *)num_v_indicies);
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[1] );
+	glDrawElements( GL_TRIANGLES, num_indicies, GL_UNSIGNED_INT, (void *)0);
     glutSwapBuffers();
 }
 
