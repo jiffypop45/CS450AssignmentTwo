@@ -20,6 +20,8 @@
 using namespace std;
 // globals
 const std::string DATA_DIRECTORY_PATH = "./Data/";
+int *idx_size = new int();
+
 typedef Angel::vec4  color4;
 typedef Angel::vec4  point4;
 const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
@@ -43,6 +45,44 @@ point4 vertices[8] = {
     point4(  0.5, -0.5, -0.5, 1.0 )
 };
 
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+
+// quad generates two triangles for each face and assigns colors
+//    to the vertices.  Notice we keep the relative ordering when constructing the tris
+int Index = 0;
+void
+quad( int a, int b, int c, int d )
+{
+
+
+  vec4 u = vertices[b] - vertices[a];
+  vec4 v = vertices[c] - vertices[b];
+
+  vec4 normal = normalize( cross(u, v) );
+  normal[3] = 0.0;
+
+  normals[Index] = normal; points[Index] = vertices[a]; Index++;
+  normals[Index] = normal; points[Index] = vertices[b]; Index++;
+  normals[Index] = normal; points[Index] = vertices[c]; Index++;
+  normals[Index] = normal; points[Index] = vertices[a]; Index++;
+  normals[Index] = normal; points[Index] = vertices[c]; Index++;
+  normals[Index] = normal; points[Index] = vertices[d]; Index++;
+}
+
+//----------------------------------------------------------------------------
+
+// generate 12 triangles: 36 vertices and 36 colors
+void
+colorcube()
+{
+  quad( 4, 5, 6, 7 );
+  quad( 5, 4, 0, 1 );
+  quad( 1, 0, 3, 2 );
+  quad( 2, 3, 7, 6 );
+  quad( 3, 0, 4, 7 );
+  quad( 6, 5, 1, 2 );
+}
 
 //----------------------------------------------------------------------------
 
@@ -138,7 +178,7 @@ int ObjObject::add_face(GLint vertex_idx, GLint texture_coord_idx, GLint normal_
 	if(texture_coord_idx != NULL)
 		this->texture_coords_faces.push_back(texture_coord_idx);
 	if(normal_idx != NULL)
-		this->texture_coords_faces.push_back(normal_idx);
+		this->normal_faces.push_back(normal_idx);
 	return vertex_faces.size();
 }
 
@@ -306,12 +346,12 @@ int ObjObject::load_from_file(string in_filename)
 				}
 			}
 		}
+		
 
 		cout << "Loaded file '" << this->filename << "'" << endl;
 		cout << "# of Verticeis: " << this->vertices.size() / this->vertex_element_size << endl;
 		cout << "# of Normals: " << this->normals.size() / 3 << endl;
 		cout << "# of faces: " << this->vertex_faces.size() << endl;
-
 		bad_file = false;
 		status = 0;
 		in_file.close();
@@ -354,41 +394,7 @@ int load_scene_by_file(string filename, vector<string>& obj_filename_list)
 	return status;
 }
 
-// quad generates two triangles for each face and assigns colors
-//    to the vertices.  Notice we keep the relative ordering when constructing the tris
-int Index = 0;
-void
-quad( int a, int b, int c, int d )
-{
 
-
-  vec4 u = vertices[b] - vertices[a];
-  vec4 v = vertices[c] - vertices[b];
-
-  vec4 normal = normalize( cross(u, v) );
-  normal[3] = 0.0;
-
-  normals[Index] = normal; points[Index] = vertices[a]; Index++;
-  normals[Index] = normal; points[Index] = vertices[b]; Index++;
-  normals[Index] = normal; points[Index] = vertices[c]; Index++;
-  normals[Index] = normal; points[Index] = vertices[a]; Index++;
-  normals[Index] = normal; points[Index] = vertices[c]; Index++;
-  normals[Index] = normal; points[Index] = vertices[d]; Index++;
-}
-
-//----------------------------------------------------------------------------
-
-// generate 12 triangles: 36 vertices and 36 colors
-void
-colorcube()
-{
-  quad( 4, 5, 6, 7 );
-  quad( 5, 4, 0, 1 );
-  quad( 1, 0, 3, 2 );
-  quad( 2, 3, 7, 6 );
-  quad( 3, 0, 4, 7 );
-  quad( 6, 5, 1, 2 );
-}
 
 //----------------------------------------------------------------------------
 
@@ -398,14 +404,13 @@ init()
 {
     colorcube();
 
-	// TODO: Use one vao and for each obj use one vbo for the verteceis  and one for normals.
-
     // Create a vertex array object
     GLuint vao;
     glGenVertexArrays( 1, &vao );
     glBindVertexArray( vao );
 
     // Create and initialize a buffer object
+
     GLuint buffer;
     glGenBuffers( 1, &buffer );
     glBindBuffer( GL_ARRAY_BUFFER, buffer );
@@ -564,17 +569,18 @@ int main(int argc, char** argv)
 		cerr << "Unable to load file: '" << data_filename << "'" << endl;
 		return -1;
 	}
-	vector<ObjObject> obj_object_data;
+	vector<ObjObject*> obj_object_data;
 	for(auto filename : obj_filenames)
 	{
-		ObjObject new_obj_object(DATA_DIRECTORY_PATH + filename);
-		if(new_obj_object.bad_file)
+		
+		obj_object_data.push_back(new ObjObject(DATA_DIRECTORY_PATH + filename));
+		if(obj_object_data.back()->bad_file)
 		{
 			cerr << "Unable to load obj files." << endl;
 			return -1;
 		}
-		obj_object_data.push_back(new_obj_object);
 	}
+
 	glutInit(&argc, argv);
 #ifdef __APPLE__
     glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_RGBA | GLUT_DEPTH);
