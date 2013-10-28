@@ -412,8 +412,8 @@ GLfloat *normal_data;
 void
 init()
 {
-	colorcube();
-	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "cube.obj");
+	//colorcube();
+	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "sphere42NS.obj");
 	
 	for(int i = 0; i < tmp->vertices.size() - 2; i += tmp->vertex_element_size)
 	{
@@ -625,9 +625,9 @@ int main(int argc, char** argv)
 
 	glutInit(&argc, argv);
 #ifdef __APPLE__
-    glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_RGBA | GLUT_DEPTH);
+    glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_RGBA | GLUT_DEPTH_TEST);
 #else
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitContextVersion (3, 2);
     glutInitContextFlags (GLUT_FORWARD_COMPATIBLE);
 #endif
