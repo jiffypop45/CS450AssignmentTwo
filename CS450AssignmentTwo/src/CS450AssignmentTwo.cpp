@@ -425,7 +425,7 @@ GLfloat *normal_data;
 void
 init()
 {
-	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "cube.obj");
+	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "bunnyNS.obj");
 	vector<GLfloat> vertex_brute_force;
 	vector<GLfloat> normal_brute_force;
 	for(auto idx : tmp->vertex_indicies)
