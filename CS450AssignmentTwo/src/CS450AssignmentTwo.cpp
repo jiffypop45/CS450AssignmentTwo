@@ -20,6 +20,8 @@
 using namespace std;
 // globals
 const std::string DATA_DIRECTORY_PATH = "./Data/";
+int *idx_size = new int();
+
 typedef Angel::vec4  color4;
 typedef Angel::vec4  point4;
 const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
@@ -43,276 +45,9 @@ point4 vertices[8] = {
     point4(  0.5, -0.5, -0.5, 1.0 )
 };
 
-
+//----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
 
-/* ObjObject serves to conveniently package the data found in an obj file. */
-class ObjObject
-{
-public:
-	// constructors & destructors
-	ObjObject();
-	ObjObject(string filename);
-	ObjObject(string filename, int vertex_element_size, int texture_coord_element_size, int param_space_vertex_element_size);
-	~ObjObject();
-
-	// methods
-	int load_from_file(string filename);
-	int add_vertex(GLfloat vertex_x, GLfloat vertex_y, GLfloat vertex_z, GLfloat vertex_w = NULL);
-	int add_texture_coord(GLfloat texture_coord_u, GLfloat texture_coord_v, GLfloat texture_coord_w = NULL);
-	int add_normal(GLfloat normal_x, GLfloat normal_y, GLfloat normal_z);
-	int add_param_vertex(GLfloat vertex_u, GLfloat vertex_v = NULL, GLfloat vertex_w = NULL);
-
-	// data
-	enum face_data_format {
-		VERTEX, 
-		VETEX_TEXTURE, 
-		VERTEX_TEXTURE_NORMAL, 
-		VERTEX_NORMAL
-	};
-	face_data_format faces_format;
-	vector<GLfloat> vertices;
-	vector<GLfloat> param_space_vertices;
-	vector<GLfloat> texture_coords;
-	vector<GLfloat> normals;
-	vector<GLint> faces;
-
-	// file characteristics / metadata
-	string filename;
-	bool is_loaded;
-	bool bad_file;
-
-	int size_of_vertex_element;
-	int size_of_texture_coord_element;
-	int size_of_param_space_vertex_element;
-	int size_of_face_element;
-};
-
-vector<string> inline StringSplit(const string &source, const char *delimiter = " ", bool keepEmpty = false)
-{
-    std::vector<std::string> results;
-
-    size_t prev = 0;
-    size_t next = 0;
-
-    while ((next = source.find_first_of(delimiter, prev)) != std::string::npos)
-    {
-        if (keepEmpty || (next - prev != 0))
-        {
-            results.push_back(source.substr(prev, next - prev));
-        }
-        prev = next + 1;
-    }
-
-    if (prev < source.size())
-    {
-        results.push_back(source.substr(prev));
-    }
-
-    return results;
-}
-
-
-ObjObject::~ObjObject()
-{
-	size_of_vertex_element = NULL;
-	size_of_texture_coord_element = NULL;
-	size_of_param_space_vertex_element = NULL;
-	size_of_face_element = NULL;
-	bad_file = NULL;
-}
-ObjObject::ObjObject()
-{
-	size_of_vertex_element = 3;
-	size_of_texture_coord_element = 2;
-	size_of_param_space_vertex_element = 1;
-	size_of_face_element = 1;
-}
-
-ObjObject::ObjObject(string in_filename)
-{
-	size_of_vertex_element = 3;
-	size_of_texture_coord_element = 2;
-	size_of_param_space_vertex_element = 1;
-	size_of_face_element = 1;
-	filename = in_filename;
-	
-	this->load_from_file(filename);
-}
-
-ObjObject::ObjObject(string in_filename, int vertex_element_size, int texture_coord_element_size, int param_space_vertex_element_size)
-{
-	size_of_vertex_element = vertex_element_size;
-	size_of_texture_coord_element = texture_coord_element_size;
-	size_of_param_space_vertex_element = param_space_vertex_element_size;
-	filename = in_filename;
-
-	this->load_from_file(filename);
-}
-
-int ObjObject::add_vertex(GLfloat vertex_x, GLfloat vertex_y, GLfloat vertex_z, GLfloat vertex_w)
-{
-	this->vertices.push_back(vertex_x);
-	this->vertices.push_back(vertex_y);
-	this->vertices.push_back(vertex_z);
-
-	if(this->size_of_vertex_element == 4)
-		this->vertices.push_back(vertex_w);
-	return this->vertices.size();
-}
-
-int ObjObject::add_texture_coord(GLfloat texture_coord_u, GLfloat texture_coord_v, GLfloat texture_coord_w)
-{
-	this->texture_coords.push_back(texture_coord_u);
-	this->texture_coords.push_back(texture_coord_v);
-	this->texture_coords.push_back(texture_coord_w);
-
-	if(this->size_of_texture_coord_element == 4)
-		this->texture_coords.push_back(texture_coord_w);
-	return this->texture_coords.size();
-}
-
-int ObjObject::add_normal(GLfloat normal_x, GLfloat normal_y, GLfloat normal_z)
-{
-	this->normals.push_back(normal_x);
-	this->normals.push_back(normal_y);
-	this->normals.push_back(normal_z);
-	return this->normals.size();
-}
-
-int ObjObject::add_param_vertex(GLfloat vertex_u, GLfloat vertex_v, GLfloat vertex_w)
-{
-	int element_size = this->size_of_param_space_vertex_element;
-
-	this->param_space_vertices.push_back(vertex_u);
-
-	if(element_size >= 2)
-		this->param_space_vertices.push_back(vertex_v);
-
-	if(element_size == 3)
-		this->param_space_vertices.push_back(vertex_w);
-
-	return this->param_space_vertices.size();
-}
-
-int ObjObject::load_from_file(string in_filename)
-{
-	filename = in_filename;
-	ifstream in_file(in_filename);
-	string line;
-	GLfloat comp0, comp1, comp2, comp3; // generic names for components of various points/vectors in the obj file
-	int vertex_size;
-	int status = -1;
-	if(in_file.is_open())
-	{
-		while(!in_file.eof())
-		{
-			getline(in_file, line);
-			auto tokens = StringSplit(line);
-			for(auto t : tokens) {
-				if(tokens[0] == "v") 
-				{
-					vertex_size = tokens.size() - 1;
-					size_of_vertex_element = vertex_size;
-					comp0 = atof(tokens[1].c_str());
-					comp1 = atof(tokens[2].c_str());
-					comp2 = atof(tokens[3].c_str());
-
-					comp3 = NULL;
-					if(size_of_vertex_element == 4)
-						comp3 = atof(tokens[4].c_str());
-
-					this->add_vertex(comp0, comp1, comp2, comp3);
-					break;
-				}  else if(tokens[0] == "vt") {
-					size_of_texture_coord_element = (tokens.size() - 1);
-					comp0 = atof(tokens[1].c_str());
-					comp1 = atof(tokens[2].c_str());
-
-					comp2 = NULL;
-					if(size_of_texture_coord_element == 3)
-						comp3 = atof(tokens[1].c_str());
-
-					this->add_texture_coord(comp0, comp1, comp2);
-					break;
-				} else if(tokens[0] == "vn") {
-					comp0 = atof(tokens[1].c_str());
-					comp1 = atof(tokens[2].c_str());
-					comp2 = atof(tokens[3].c_str());
-
-					this->add_normal(comp0, comp1, comp2);
-					break;
-				} else if(tokens[0] == "vp") {
-					size_of_param_space_vertex_element = (tokens.size() - 1);
-					comp0 = atof(tokens[1].c_str());
-
-					comp1 = NULL;
-					comp2 = NULL;
-					if(size_of_param_space_vertex_element >= 2)
-						comp1 = atof(tokens[2].c_str());
-
-					if(size_of_param_space_vertex_element == 3)
-						comp2 = atof(tokens[3].c_str());
-
-					this->add_param_vertex(comp0, comp1, comp2);
-					break;
-				} else if(tokens[0] == "f") {
-					vector<string> f1 = StringSplit(tokens[1], "/");
-					vector<string> f2 = StringSplit(tokens[2], "/");
-					vector<string> f3 = StringSplit(tokens[3], "/");
-					// TODO: Not sure how faces should be loaded into vectors
-					size_of_face_element = (f1.size());
-					break;
-				} else if(tokens[0] == "#") {
-					// This is a comment line
-					break;
-				} else {
-					// TODO: This catches the first three lines of obj file which contains file validation data. Need to handle these three lines instead of falling through here.
-					cerr << "Inconceivable!" << endl;
-					break;
-				}
-			}
-		}
-		cout << line << endl;
-		bad_file = false;
-		status = 0;
-		in_file.close();
-	} else {
-		cerr << "Unable to open file: '" << filename << "'" << endl;
-		bad_file = true;
-		return status;
-	}
-	return status;
-}
-// END: ObjObject implementation
-
-int load_scene_by_file(string filename, vector<string>& obj_filename_list)
-{
-	ifstream input_scene_file;
-	string line;
-	string filepath;
-	int status = -1;
-
-	filepath = DATA_DIRECTORY_PATH + filename;
-
-	input_scene_file.open(filepath);
-	if(input_scene_file.is_open())
-	{
-		getline(input_scene_file, line);
-		cout << "Dimension(s) of file: '" << line << "'" << endl;
-		while(!input_scene_file.eof())
-		{
-			getline(input_scene_file, line);
-			obj_filename_list.push_back(line);
-			cout << line << endl;
-		}
-		status = 0;
-		input_scene_file.close();
-	} else {
-		status = -1;
-	}
-	return status;
-}
 // quad generates two triangles for each face and assigns colors
 //    to the vertices.  Notice we keep the relative ordering when constructing the tris
 int Index = 0;
@@ -351,40 +86,367 @@ colorcube()
 
 //----------------------------------------------------------------------------
 
+/* ObjObject serves to conveniently package the data found in an obj file. */
+class ObjObject
+{
+public:
+	// constructors & destructors
+	ObjObject();
+	ObjObject(string filename);
+	~ObjObject();
+
+	// methods
+	int load_from_file(string filename);
+	int add_vertex(GLfloat x, GLfloat y, GLfloat z, GLfloat w = NULL);
+	int add_texture_coord(GLfloat texture_coord_u, GLfloat texture_coord_v, GLfloat texture_coord_w = NULL);
+	int add_normal(GLfloat normal_x, GLfloat normal_y, GLfloat normal_z);
+	int add_param_vertex(GLfloat vertex_u, GLfloat vertex_v = NULL, GLfloat vertex_w = NULL);
+	int add_face(GLint vertex_idx, GLint texture_coord_idx = NULL, GLint normal_idx = NULL);
+
+	// data
+	vector<GLfloat> vertices;
+	vector<GLfloat> param_space_vertices;
+	vector<GLfloat> texture_coords;
+	vector<GLfloat> normals;
+	vector<GLuint> vertex_faces;
+	vector<GLuint> texture_coords_faces;
+	vector<GLuint> normal_faces;
+
+	// file characteristics / metadata
+	string filename;
+	bool is_loaded;
+	bool bad_file;
+
+	int vertex_element_size;
+	int texture_coord_element_size;
+	int param_space_vertex_element_size;
+};
+
+vector<string> inline StringSplit(const string &source, const char *delimiter = " ", bool keepEmpty = false)
+{
+    std::vector<std::string> results;
+
+    size_t prev = 0;
+    size_t next = 0;
+
+    while ((next = source.find_first_of(delimiter, prev)) != std::string::npos)
+    {
+        if (keepEmpty || (next - prev != 0))
+        {
+            results.push_back(source.substr(prev, next - prev));
+        }
+        prev = next + 1;
+    }
+
+    if (prev < source.size())
+    {
+        results.push_back(source.substr(prev));
+    }
+
+    return results;
+}
+
+
+ObjObject::~ObjObject()
+{
+	vertex_element_size = NULL;
+	texture_coord_element_size = NULL;
+	param_space_vertex_element_size = NULL;
+	bad_file = NULL;
+}
+
+ObjObject::ObjObject()
+{
+	vertex_element_size = 3;
+	texture_coord_element_size = 2;
+	param_space_vertex_element_size = 1;
+}
+
+ObjObject::ObjObject(string in_filename)
+{
+	vertex_element_size = 3;
+	texture_coord_element_size = 2;
+	param_space_vertex_element_size = 1;
+	filename = in_filename;
+	
+	this->load_from_file(filename);
+}
+
+int ObjObject::add_face(GLint vertex_idx, GLint texture_coord_idx, GLint normal_idx)
+{
+	this->vertex_faces.push_back(vertex_idx);
+	if(texture_coord_idx != NULL)
+		this->texture_coords_faces.push_back(texture_coord_idx);
+	if(normal_idx != NULL)
+		this->normal_faces.push_back(normal_idx);
+	return vertex_faces.size();
+}
+
+int ObjObject::add_vertex(GLfloat x, GLfloat y, GLfloat z, GLfloat w)
+{
+	this->vertices.push_back(x);
+	this->vertices.push_back(y);
+	this->vertices.push_back(z);
+
+	if(this->vertex_element_size == 4)
+		this->vertices.push_back(w);
+	return this->vertices.size();
+}
+
+int ObjObject::add_texture_coord(GLfloat u, GLfloat v, GLfloat w)
+{
+	this->texture_coords.push_back(u);
+	this->texture_coords.push_back(v);
+
+	if(this->texture_coord_element_size == 4)
+		this->texture_coords.push_back(w);
+	return this->texture_coords.size();
+}
+
+int ObjObject::add_normal(GLfloat x, GLfloat y, GLfloat z)
+{
+	this->normals.push_back(x);
+	this->normals.push_back(y);
+	this->normals.push_back(z);
+	return this->normals.size();
+}
+
+int ObjObject::add_param_vertex(GLfloat u, GLfloat  v, GLfloat w)
+{
+	int element_size = this->param_space_vertex_element_size;
+
+	this->param_space_vertices.push_back(u);
+
+	if(element_size >= 2)
+		this->param_space_vertices.push_back(v);
+
+	if(element_size == 3)
+		this->param_space_vertices.push_back(w);
+
+	return this->param_space_vertices.size();
+}
+
+int ObjObject::load_from_file(string in_filename)
+{
+	filename = in_filename;
+	ifstream in_file(in_filename);
+	string line;
+	GLfloat comp0, comp1, comp2, comp3; // generic names for components of various points/vectors in the obj file
+	int vertex_size;
+	int status = -1;
+	
+	auto proc_vertex_tokens = [this] (vector<string> tokens) {
+		GLfloat x, y, z, w;
+		GLint vertex_size;
+
+		vertex_size = tokens.size() - 1;
+		x = atof(tokens[1].c_str());
+		y = atof(tokens[2].c_str());
+		z = atof(tokens[3].c_str());
+		w = NULL;
+
+		if(vertex_size == 4)
+			w = atof(tokens[4].c_str());
+
+		this->vertex_element_size = vertex_size;
+		this->add_vertex(x, y, z, w);
+	};
+
+	auto proc_texture_coord_tokens = [this] (vector<string> tokens) {
+		auto texture_coord_element_size = (tokens.size() - 1);
+		auto vt0 = atof(tokens[1].c_str());
+		auto vt1 = atof(tokens[2].c_str());
+		auto vt2 = NULL;
+
+		if(texture_coord_element_size == 3)
+			vt2 = atof(tokens[3].c_str());
+
+		this->add_texture_coord(vt0, vt1, vt2);
+		this->texture_coord_element_size = texture_coord_element_size;
+	};
+
+	auto proc_normal_tokens = [this] (vector<string> tokens) { 
+		auto n0 = atof(tokens[1].c_str());
+		auto n1 = atof(tokens[2].c_str());
+		auto n2 = atof(tokens[3].c_str());
+
+		this->add_normal(n0, n1, n2);
+	};
+
+	auto proc_param_space_vertex_tokens = [this] (vector<string> tokens) { 
+
+		auto param_space_vertex_element_size = (tokens.size() - 1);
+		auto u = atof(tokens[1].c_str());
+		auto v = NULL;
+		auto w = NULL;
+
+		if(param_space_vertex_element_size >= 2)
+			v = atof(tokens[2].c_str());
+
+		if(param_space_vertex_element_size == 3)
+			w = atof(tokens[3].c_str());
+
+		this->add_param_vertex(u, v, w);
+	};
+
+	auto proc_face_tokens = [this] (vector<string> tokens) {
+		for(int i = 1; i < tokens.size(); i++) {
+			vector<string> face = StringSplit(tokens[i], "/", true);
+			vector<GLuint> face_idx_vals;
+			for(auto idx_string : face)
+			{
+				if(idx_string == ""){
+					face_idx_vals.push_back(NULL);
+				} else {
+					face_idx_vals.push_back(atoi(idx_string.c_str()));
+				}
+			}
+
+			if(face_idx_vals.size() == 1)
+			{
+				this->add_face(face_idx_vals[0]);
+			} else if(face_idx_vals.size() == 2) {
+				this->add_face(face_idx_vals[0], face_idx_vals[1]);
+			} else if(face_idx_vals.size() == 3) {
+				this->add_face(face_idx_vals[0], face_idx_vals[1], face_idx_vals[2]);
+			}
+		} 
+	};
+
+	if(in_file.is_open())
+	{
+		while(!in_file.eof())
+		{
+			getline(in_file, line);
+			auto tokens = StringSplit(line);
+			for(auto t : tokens) {
+				if(tokens[0] == "v") 
+				{
+					proc_vertex_tokens(tokens);
+					break;
+				}  else if(tokens[0] == "vt") {
+					proc_texture_coord_tokens(tokens);
+					break;
+				} else if(tokens[0] == "vn") {
+					proc_normal_tokens(tokens);
+					break;
+				} else if(tokens[0] == "vp") {
+					proc_param_space_vertex_tokens(tokens);
+					break;
+				} else if(tokens[0] == "f") {
+					proc_face_tokens(tokens);
+					break;
+				} else if(tokens[0] == "#") {
+					// This is a comment line for an obj file
+					break;
+				} else {
+					// TODO: This catches the first three lines of obj file which contains file validation data. Need to handle these three lines instead of falling through here.
+					cerr << "Inconceivable!" << endl;
+					break;
+				}
+			}
+		}
+		
+
+		cout << "Loaded file '" << this->filename << "'" << endl;
+		cout << "# of Verticeis: " << this->vertices.size() / this->vertex_element_size << endl;
+		cout << "# of Normals: " << this->normals.size() / 3 << endl;
+		cout << "# of faces: " << this->vertex_faces.size() << endl;
+		bad_file = false;
+		status = 0;
+		in_file.close();
+	} else {
+		cerr << "Unable to open file: '" << filename << "'" << endl;
+		bad_file = true;
+		return status;
+	}
+	return status;
+
+	
+}
+// END: ObjObject implementation
+
+int load_scene_by_file(string filename, vector<string>& obj_filename_list)
+{
+	ifstream input_scene_file;
+	string line;
+	string filepath;
+	int status = -1;
+
+	filepath = DATA_DIRECTORY_PATH + filename;
+
+	input_scene_file.open(filepath);
+	if(input_scene_file.is_open())
+	{
+		getline(input_scene_file, line);
+		cout << "Dimension(s) of file: '" << line << "'" << endl;
+		while(!input_scene_file.eof())
+		{
+			getline(input_scene_file, line);
+			obj_filename_list.push_back(line);
+			cout << line << endl;
+		}
+		status = 0;
+		input_scene_file.close();
+	} else {
+		status = -1;
+	}
+	return status;
+}
+
+
+
+//----------------------------------------------------------------------------
+// Should do something aobut these globals
+// Create a vertex array object
+GLuint vao;
+
+GLuint buffers[2];
+GLint num_indicies;
+
 // OpenGL initialization
 void
 init()
 {
-    colorcube();
+	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "bunnyNS.obj");
 
-    // Create a vertex array object
-    GLuint vao;
-    glGenVertexArrays( 1, &vao );
-    glBindVertexArray( vao );
+	glGenVertexArrays( 1, &vao );
+	glBindVertexArray( vao );
+	glGenBuffers( 2, buffers );
+	
+	auto vertex_data = tmp->vertices.data();
+	auto normal_data = tmp->normals.data();
+	auto indicies_data = tmp->vertex_faces.data();
 
-    // Create and initialize a buffer object
-    GLuint buffer;
-    glGenBuffers( 1, &buffer );
-    glBindBuffer( GL_ARRAY_BUFFER, buffer );
-    glBufferData( GL_ARRAY_BUFFER, sizeof(points) + sizeof(normals),
-		  NULL, GL_STATIC_DRAW );
-    glBufferSubData( GL_ARRAY_BUFFER, 0, sizeof(points), points );
-    glBufferSubData( GL_ARRAY_BUFFER, sizeof(points), sizeof(normals), normals );
+	auto num_bytes_vertex_data = sizeof(GLfloat) * tmp->vertices.size();
+	auto num_bytes_normal_data = sizeof(GLfloat) * tmp->normals.size();
+	auto num_bytes_indicies = sizeof(GLuint) * tmp->vertex_faces.size();
+	num_indicies = tmp->vertex_faces.size();
+
+	glBindBuffer( GL_ARRAY_BUFFER, buffers[0] );
+	glBufferData( GL_ARRAY_BUFFER, num_bytes_vertex_data + num_bytes_normal_data, NULL, GL_STATIC_DRAW );
+	glBufferSubData( GL_ARRAY_BUFFER, 0, num_bytes_vertex_data, vertex_data );
+	glBufferSubData( GL_ARRAY_BUFFER, num_bytes_vertex_data, num_bytes_normal_data, normal_data );
+
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[1] );
+	glBufferData( GL_ELEMENT_ARRAY_BUFFER, num_bytes_indicies, NULL, GL_STATIC_DRAW );
+	glBufferSubData( GL_ELEMENT_ARRAY_BUFFER, 0, num_bytes_indicies, indicies_data );
 
     // Load shaders and use the resulting shader program
     GLuint program = InitShader( "./src/vshader.glsl", "./src/fshader.glsl" );
     glUseProgram( program );
 
+	glBindBuffer( GL_ARRAY_BUFFER, buffers[0] );
     // set up vertex arrays
     GLuint vPosition = glGetAttribLocation( program, "vPosition" );
     glEnableVertexAttribArray( vPosition );
-    glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
+    glVertexAttribPointer( vPosition, tmp->vertex_element_size, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(0) );
 
     GLuint vNormal = glGetAttribLocation( program, "vNormal" );
     glEnableVertexAttribArray( vNormal );
-    glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0,
-			   BUFFER_OFFSET(sizeof(points)) );
+    glVertexAttribPointer( vNormal, 3, GL_FLOAT, GL_FALSE, 0,
+		BUFFER_OFFSET(num_bytes_normal_data) );
 
 
     // Initialize shader lighting parameters
@@ -424,7 +486,7 @@ init()
 
 
     mat4 p = Perspective(45, 1.0, 0.1, 10.0);
-    point4  eye( 1.0, 1.0, 2.0, 1.0);
+    point4  eye( 0.0, 1.0, 1.0, 1.0);
     point4  at( 0.0, 0.0, 0.0, 1.0 );
     vec4    up( 0.0, 1.0, 0.0, 0.0 );
 
@@ -446,7 +508,8 @@ void
 display( void )
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    glDrawArrays( GL_TRIANGLES, 0, NumVertices );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[1] );
+	glDrawElements( GL_TRIANGLES, num_indicies, GL_UNSIGNED_INT, (void *)0);
     glutSwapBuffers();
 }
 
@@ -521,16 +584,18 @@ int main(int argc, char** argv)
 		cerr << "Unable to load file: '" << data_filename << "'" << endl;
 		return -1;
 	}
-	vector<ObjObject> obj_object_data;
+	vector<ObjObject*> obj_object_data;
 	for(auto filename : obj_filenames)
 	{
-		ObjObject new_obj_object(DATA_DIRECTORY_PATH + filename);
-		if(new_obj_object.bad_file)
+		
+		obj_object_data.push_back(new ObjObject(DATA_DIRECTORY_PATH + filename));
+		if(obj_object_data.back()->bad_file)
 		{
 			cerr << "Unable to load obj files." << endl;
 			return -1;
 		}
 	}
+
 	glutInit(&argc, argv);
 #ifdef __APPLE__
     glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_RGBA | GLUT_DEPTH);
