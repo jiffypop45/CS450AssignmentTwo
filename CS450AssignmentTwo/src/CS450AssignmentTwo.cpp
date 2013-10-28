@@ -411,7 +411,7 @@ GLfloat *normal_data;
 void
 init()
 {
-	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "sphere42NS.obj");
+	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "cube.obj");
 	vector<GLfloat> vertex_brute_force;
 	vector<GLfloat> normal_brute_force;
 	for(auto idx : tmp->vertex_indicies)
