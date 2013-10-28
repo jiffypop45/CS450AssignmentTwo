@@ -108,9 +108,9 @@ public:
 	vector<GLfloat> param_space_vertices;
 	vector<GLfloat> texture_coords;
 	vector<GLfloat> normals;
-	vector<GLuint> vertex_indicies;
-	vector<GLuint> texture_coord_indicies;
-	vector<GLuint> normal_indicies;
+	vector<GLint> vertex_indicies;
+	vector<GLint> texture_coord_indicies;
+	vector<GLint> normal_indicies;
 
 	// file characteristics / metadata
 	string filename;
@@ -306,7 +306,7 @@ int ObjObject::load_from_file(string in_filename)
 	auto proc_face_tokens = [this] (vector<string> tokens) {
 		for(int i = 1; i < tokens.size(); i++) {
 			vector<string> face = StringSplit(tokens[i], "/", true);
-			vector<GLuint> face_idx_vals;
+			vector<GLint> face_idx_vals;
 			for(auto idx_string : face)
 			{
 				if(idx_string == ""){
@@ -416,7 +416,7 @@ GLuint vao;
 
 GLuint buffers[4];
 GLint num_indicies;
-GLint num_verts;
+GLint *num_verts = new GLint();
 GLuint *indicies_data;
 GLuint *n_indicies_data;
 GLfloat *vertex_data;
@@ -425,7 +425,7 @@ GLfloat *normal_data;
 void
 init()
 {
-	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "cube.obj");
+	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "iso_sphere.obj");
 	vector<GLfloat> vertex_brute_force;
 	vector<GLfloat> normal_brute_force;
 	for(auto idx : tmp->vertex_indicies)
@@ -440,11 +440,15 @@ init()
 			normal_brute_force.push_back(tmp->normals[tmp->normal_element_size*n_idx + i]);
 		}
 	}
+	for(auto vert_idx : tmp->vertex_indicies)
+	{
+		cout << "vert_idx : " << vert_idx << endl;
+	}
 	auto num_bytes_vert_data = sizeof(GLfloat) * vertex_brute_force.size();
 	auto num_bytes_norm_data = sizeof(GLfloat) * normal_brute_force.size();
 	vertex_brute_force.shrink_to_fit();
 	normal_brute_force.shrink_to_fit();
-	num_verts = vertex_brute_force.size();
+	num_verts = new GLint(vertex_brute_force.size() / tmp->vertex_element_size);
     // Create a vertex array object
     GLuint vao;
     glGenVertexArrays( 1, &vao );
@@ -478,7 +482,7 @@ init()
     // Initialize shader lighting parameters
     // RAM: No need to change these...we'll learn about the details when we
     // cover Illumination and Shading
-    point4 light_position( 1.5, 0.5, 2.0, 1.0 );
+    point4 light_position( 0., 0., -1., 1.0 );
     color4 light_ambient( 0.2, 0.2, 0.2, 1.0 );
     color4 light_diffuse( 1.0, 1.0, 1.0, 1.0 );
     color4 light_specular( 1.0, 1.0, 1.0, 1.0 );
@@ -512,7 +516,7 @@ init()
 
 
     mat4 p = Perspective(45, 1.0, 0.1, 10.0);
-    point4  eye( -4.0, -4.0, 4.0, 1.0);
+    point4  eye( 0., .0, 2., 1.0);
     point4  at( 0.0, 0.0, 0.0, 1.0 );
     vec4    up( 0.0, 1.0, 0.0, 0.0 );
 
@@ -534,7 +538,7 @@ void
 display( void )
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-	glDrawArrays(GL_TRIANGLES, 0, num_verts);
+	glDrawArrays(GL_TRIANGLES, 0, *num_verts);
     glutSwapBuffers();
 }
 
@@ -613,12 +617,12 @@ int main(int argc, char** argv)
 	for(auto filename : obj_filenames)
 	{
 		
-		obj_object_data.push_back(new ObjObject(DATA_DIRECTORY_PATH + filename));
+		/*obj_object_data.push_back(new ObjObject(DATA_DIRECTORY_PATH + filename));
 		if(obj_object_data.back()->bad_file)
 		{
 			cerr << "Unable to load obj files." << endl;
 			return -1;
-		}
+		}*/
 	}
 
 	glutInit(&argc, argv);
