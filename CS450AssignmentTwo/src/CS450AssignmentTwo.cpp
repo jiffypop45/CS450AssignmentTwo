@@ -416,15 +416,17 @@ init()
 	vector<GLfloat> normal_brute_force;
 	for(auto idx : tmp->vertex_indicies)
 	{
-		vertex_brute_force.push_back(tmp->vertices[idx]);
-		vertex_brute_force.push_back(tmp->vertices[idx+1]);
-		vertex_brute_force.push_back(tmp->vertices[idx+2]);
+		vertex_brute_force.push_back(tmp->vertices[4*idx]);
+		vertex_brute_force.push_back(tmp->vertices[4*idx+1]);
+		vertex_brute_force.push_back(tmp->vertices[4*idx+2]);
+		vertex_brute_force.push_back(tmp->vertices[4*idx+3]);
 	}
 	for(auto n_idx : tmp->normal_indicies)
 	{
-		normal_brute_force.push_back(tmp->vertices[n_idx]);
-		normal_brute_force.push_back(tmp->vertices[n_idx+1]);
-		normal_brute_force.push_back(tmp->vertices[n_idx+2]);
+		normal_brute_force.push_back(tmp->normals[3*n_idx]);
+		normal_brute_force.push_back(tmp->normals[3*n_idx+1]);
+		normal_brute_force.push_back(tmp->normals[3*n_idx+2]);
+		normal_brute_force.push_back((GLfloat)(0.0f));
 	}
 	auto num_bytes_vert_data = sizeof(GLfloat) * vertex_brute_force.size();
 	auto num_bytes_norm_data = sizeof(GLfloat) * normal_brute_force.size();
@@ -452,13 +454,13 @@ init()
     // set up vertex arrays
     GLuint vPosition = glGetAttribLocation( program, "vPosition" );
     glEnableVertexAttribArray( vPosition );
-    glVertexAttribPointer( vPosition, 3, GL_FLOAT, GL_FALSE, 0,
+    glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(0) );
 
     GLuint vNormal = glGetAttribLocation( program, "vNormal" );
     glEnableVertexAttribArray( vNormal );
-    glVertexAttribPointer( vNormal, 3, GL_FLOAT, GL_FALSE, 0,
-			   BUFFER_OFFSET(sizeof(points)) );
+    glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0,
+		BUFFER_OFFSET(num_bytes_vert_data));
 
 
     // Initialize shader lighting parameters
@@ -498,7 +500,7 @@ init()
 
 
     mat4 p = Perspective(45, 1.0, 0.1, 10.0);
-    point4  eye( 1.0, 1.0, 1.0, 1.0);
+    point4  eye( 2.0, -2.0, -2.0, 1.0);
     point4  at( 0.0, 0.0, 0.0, 1.0 );
     vec4    up( 0.0, 1.0, 0.0, 0.0 );
 
