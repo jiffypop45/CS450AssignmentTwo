@@ -428,6 +428,7 @@ init()
 	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "bunnyNS.obj");
 	vector<GLfloat> vertex_brute_force;
 	vector<GLfloat> normal_brute_force;
+
 	for(auto idx : tmp->vertex_indicies)
 	{
 		for(int i = 0; i < tmp->vertex_element_size; i++) {
@@ -623,7 +624,7 @@ int main(int argc, char** argv)
 
 	glutInit(&argc, argv);
 #ifdef __APPLE__
-    glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_RGBA | GLUT_DEPTH);
+    glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_RGBA | GLUT_DEPTH_TEST);
 #else
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitContextVersion (3, 2);
