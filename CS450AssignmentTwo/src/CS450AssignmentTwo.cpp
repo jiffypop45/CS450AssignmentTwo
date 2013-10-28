@@ -320,6 +320,7 @@ int ObjObject::load_from_file(string in_filename)
 			getline(in_file, line);
 			auto tokens = StringSplit(line);
 			for(auto t : tokens) {
+
 				if(tokens[0] == "v") 
 				{
 					proc_vertex_tokens(tokens);
@@ -336,7 +337,7 @@ int ObjObject::load_from_file(string in_filename)
 				} else if(tokens[0] == "f") {
 					proc_face_tokens(tokens);
 					break;
-				} else if(tokens[0] == "#") {
+				} else if(tokens[0][0] == '#') {
 					// This is a comment line for an obj file
 					break;
 				} else {
@@ -361,8 +362,6 @@ int ObjObject::load_from_file(string in_filename)
 		return status;
 	}
 	return status;
-
-	
 }
 // END: ObjObject implementation
 
@@ -403,7 +402,7 @@ GLuint vao;
 
 GLuint buffers[4];
 GLint num_indicies;
-GLint n_num_indicies;
+GLint num_verts;
 GLuint *indicies_data;
 GLuint *n_indicies_data;
 GLfloat *vertex_data;
@@ -412,70 +411,60 @@ GLfloat *normal_data;
 void
 init()
 {
-	colorcube();
-	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "cube.obj");
-	
-	for(int i = 0; i < tmp->vertices.size() - 2; i += tmp->vertex_element_size)
-	{
-		cout << "v " << tmp->vertices[i] << " " << tmp->vertices[i + 1] << " " << tmp->vertices[i + 2] << endl;
-	}
-	for(int j = 0; j < tmp->normals.size() - 2; j += 3)
-	{
-		cout << "vn " << tmp->normals[j] << " " << tmp->normals[j + 1] << " " << tmp->normals[j + 2] << endl;
-	}
+	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "sphere42NS.obj");
+	vector<GLfloat> vertex_brute_force;
+	vector<GLfloat> normal_brute_force;
 	for(auto idx : tmp->vertex_indicies)
 	{
-		cout << "fv " << idx << endl;
+		vertex_brute_force.push_back(tmp->vertices[idx]);
+		vertex_brute_force.push_back(tmp->vertices[idx+1]);
+		vertex_brute_force.push_back(tmp->vertices[idx+2]);
 	}
-	cout << "normal_indicies.size(): " << tmp->normal_indicies.size() << endl;
-	for(auto idx : tmp->normal_indicies)
+	for(auto n_idx : tmp->normal_indicies)
 	{
-		cout << "fn " << idx << endl;
+		normal_brute_force.push_back(tmp->vertices[n_idx]);
+		normal_brute_force.push_back(tmp->vertices[n_idx+1]);
+		normal_brute_force.push_back(tmp->vertices[n_idx+2]);
 	}
-	glGenVertexArrays( 1, &vao );
-	glBindVertexArray( vao );
-	glGenBuffers( 4, buffers );
-	
-	vertex_data = tmp->vertices.data();
-	normal_data = tmp->normals.data();
-	indicies_data = tmp->vertex_indicies.data();
-	n_indicies_data = tmp->normal_indicies.data();
+	auto num_bytes_vert_data = sizeof(GLfloat) * vertex_brute_force.size();
+	auto num_bytes_norm_data = sizeof(GLfloat) * normal_brute_force.size();
+	vertex_brute_force.shrink_to_fit();
+	normal_brute_force.shrink_to_fit();
+	num_verts = vertex_brute_force.size();
+    // Create a vertex array object
+    GLuint vao;
+    glGenVertexArrays( 1, &vao );
+    glBindVertexArray( vao );
 
-	auto num_bytes_vertex_data = sizeof(GLfloat) * tmp->vertices.size();
-	auto num_bytes_normal_data = sizeof(GLfloat) * tmp->normals.size();
-	auto num_bytes_indicies = sizeof(GLuint) * tmp->vertex_indicies.size();
-	auto num_bytes_n_indicies = sizeof(GLuint) * tmp->normal_indicies.size();
-	num_indicies = tmp->vertex_indicies.size();
-	n_num_indicies = tmp->normal_indicies.size();
+    // Create and initialize a buffer object
+    GLuint buffer;
+    glGenBuffers( 1, &buffer );
+    glBindBuffer( GL_ARRAY_BUFFER, buffer );
+	glBufferData( GL_ARRAY_BUFFER, num_bytes_vert_data + num_bytes_norm_data,
+		  NULL, GL_STATIC_DRAW );
+    glBufferSubData( GL_ARRAY_BUFFER, 0, num_bytes_vert_data, vertex_brute_force.data() );
+	glBufferSubData( GL_ARRAY_BUFFER, num_bytes_vert_data, num_bytes_norm_data, normal_brute_force.data() );
+
+    // Load shaders and use the resulting shader program
     GLuint program = InitShader( "./src/vshader.glsl", "./src/fshader.glsl" );
     glUseProgram( program );
-	
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[0] );
-	glBufferData( GL_ELEMENT_ARRAY_BUFFER, num_bytes_indicies, indicies_data, GL_STATIC_DRAW );
 
-	glBindBuffer( GL_ARRAY_BUFFER, buffers[1] );
+    // set up vertex arrays
     GLuint vPosition = glGetAttribLocation( program, "vPosition" );
     glEnableVertexAttribArray( vPosition );
-    glVertexAttribPointer( vPosition, tmp->vertex_element_size, GL_FLOAT, GL_FALSE, 0,
+    glVertexAttribPointer( vPosition, 3, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(0) );
-	glBufferData( GL_ARRAY_BUFFER, num_bytes_vertex_data, vertex_data, GL_STATIC_DRAW );
 
-
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[2] );
-	glBufferData( GL_ELEMENT_ARRAY_BUFFER, num_bytes_n_indicies, n_indicies_data, GL_STATIC_DRAW );
-
-	glBindBuffer( GL_ARRAY_BUFFER, buffers[3] );
     GLuint vNormal = glGetAttribLocation( program, "vNormal" );
     glEnableVertexAttribArray( vNormal );
     glVertexAttribPointer( vNormal, 3, GL_FLOAT, GL_FALSE, 0,
-		BUFFER_OFFSET(num_bytes_normal_data) );
-	glBufferData( GL_ARRAY_BUFFER, num_bytes_normal_data, normal_data, GL_STATIC_DRAW );
+			   BUFFER_OFFSET(sizeof(points)) );
 
 
     // Initialize shader lighting parameters
     // RAM: No need to change these...we'll learn about the details when we
     // cover Illumination and Shading
-    point4 light_position( 1.5, 0.5, 2.0, 1.0 );
+    point4 light_position( 1.5, 0.5, -2.0, 1.0 );
     color4 light_ambient( 0.2, 0.2, 0.2, 1.0 );
     color4 light_diffuse( 1.0, 1.0, 1.0, 1.0 );
     color4 light_specular( 1.0, 1.0, 1.0, 1.0 );
@@ -509,11 +498,11 @@ init()
 
 
     mat4 p = Perspective(45, 1.0, 0.1, 10.0);
-    point4  eye( 0.0, 1.0, 1.0, 1.0);
+    point4  eye( 1.0, 1.0, 1.0, 1.0);
     point4  at( 0.0, 0.0, 0.0, 1.0 );
     vec4    up( 0.0, 1.0, 0.0, 0.0 );
 
-	
+
     mat4  mv = LookAt( eye, at, up );
     //vec4 v = vec4(0.0, 0.0, 1.0, 1.0);
 
@@ -531,12 +520,7 @@ void
 display( void )
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-	glBindBuffer( GL_ARRAY_BUFFER, buffers[1] );
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[0] );
-	glDrawElements( GL_TRIANGLES, num_indicies, GL_UNSIGNED_INT, BUFFER_OFFSET(0) );
-	glBindBuffer( GL_ARRAY_BUFFER, buffers[3] );
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[2]);
-	glDrawElements( GL_TRIANGLES, n_num_indicies, GL_UNSIGNED_INT, BUFFER_OFFSET(0) );
+	glDrawArrays(GL_TRIANGLES, 0, num_verts);
     glutSwapBuffers();
 }
 
@@ -627,7 +611,7 @@ int main(int argc, char** argv)
 #ifdef __APPLE__
     glutInitDisplayMode(GLUT_3_2_CORE_PROFILE | GLUT_RGBA | GLUT_DEPTH);
 #else
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitContextVersion (3, 2);
     glutInitContextFlags (GLUT_FORWARD_COMPATIBLE);
 #endif
