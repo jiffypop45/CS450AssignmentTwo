@@ -97,11 +97,11 @@ public:
 
 	// methods
 	int load_from_file(string filename);
-	int add_vertex(GLfloat x, GLfloat y, GLfloat z, GLfloat w = NULL);
-	int add_texture_coord(GLfloat texture_coord_u, GLfloat texture_coord_v, GLfloat texture_coord_w = NULL);
-	int add_normal(GLfloat normal_x, GLfloat normal_y, GLfloat normal_z);
-	int add_param_vertex(GLfloat vertex_u, GLfloat vertex_v = NULL, GLfloat vertex_w = NULL);
-	int add_face(GLint vertex_idx, GLint texture_coord_idx = NULL, GLint normal_idx = NULL);
+	int add_vertex(GLfloat x, GLfloat y, GLfloat z, GLfloat w = 0);
+	int add_texture_coord(GLfloat texture_coord_u, GLfloat texture_coord_v, GLfloat texture_coord_w = 0);
+	int add_normal(GLfloat normal_x, GLfloat normal_y, GLfloat normal_z, GLfloat normal_w = 0);
+	int add_param_vertex(GLfloat vertex_u, GLfloat vertex_v = 0, GLfloat vertex_w = 0);
+	int add_face(GLint vertex_idx, GLint texture_coord_idx = 0, GLint normal_idx = 0);
 
 	// data
 	vector<GLfloat> vertices;
@@ -116,8 +116,9 @@ public:
 	string filename;
 	bool is_loaded;
 	bool bad_file;
-
+	
 	int vertex_element_size;
+	int normal_element_size;
 	int texture_coord_element_size;
 	int param_space_vertex_element_size;
 };
@@ -174,11 +175,12 @@ ObjObject::ObjObject(string in_filename)
 
 int ObjObject::add_face(GLint vertex_idx, GLint texture_coord_idx, GLint normal_idx)
 {
-	this->vertex_indicies.push_back(vertex_idx);
+	// things are indexed starting from 1 instead of 0. this is stupid, so we fix it.
+	this->vertex_indicies.push_back(vertex_idx - 1);
 	if(texture_coord_idx != -1)
-		this->texture_coord_indicies.push_back(texture_coord_idx);
+		this->texture_coord_indicies.push_back(texture_coord_idx - 1);
 	if(normal_idx != -1)
-		this->normal_indicies.push_back(normal_idx);
+		this->normal_indicies.push_back(normal_idx - 1);
 	return vertex_indicies.size();
 }
 
@@ -203,11 +205,15 @@ int ObjObject::add_texture_coord(GLfloat u, GLfloat v, GLfloat w)
 	return this->texture_coords.size();
 }
 
-int ObjObject::add_normal(GLfloat x, GLfloat y, GLfloat z)
+int ObjObject::add_normal(GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
 	this->normals.push_back(x);
 	this->normals.push_back(y);
 	this->normals.push_back(z);
+
+	if(this->normal_element_size == 4)
+		this->vertices.push_back(w);
+
 	return this->normals.size();
 }
 
@@ -243,7 +249,7 @@ int ObjObject::load_from_file(string in_filename)
 		x = atof(tokens[1].c_str());
 		y = atof(tokens[2].c_str());
 		z = atof(tokens[3].c_str());
-		w = NULL;
+		w = 0;
 
 		if(vertex_size == 4)
 			w = atof(tokens[4].c_str());
@@ -256,7 +262,7 @@ int ObjObject::load_from_file(string in_filename)
 		auto texture_coord_element_size = (tokens.size() - 1);
 		auto vt0 = atof(tokens[1].c_str());
 		auto vt1 = atof(tokens[2].c_str());
-		auto vt2 = NULL;
+		auto vt2 = 0;
 
 		if(texture_coord_element_size == 3)
 			vt2 = atof(tokens[3].c_str());
@@ -266,19 +272,27 @@ int ObjObject::load_from_file(string in_filename)
 	};
 
 	auto proc_normal_tokens = [this] (vector<string> tokens) { 
+		auto normal_size = tokens.size() - 1;
+
 		auto n0 = atof(tokens[1].c_str());
 		auto n1 = atof(tokens[2].c_str());
 		auto n2 = atof(tokens[3].c_str());
 
+		GLfloat w = 0;
+
+		if(normal_size == 4)
+			w = atof(tokens[4].c_str());
+
 		this->add_normal(n0, n1, n2);
+		this->normal_element_size = normal_size;
 	};
 
 	auto proc_param_space_vertex_tokens = [this] (vector<string> tokens) { 
 
 		auto param_space_vertex_element_size = (tokens.size() - 1);
 		auto u = atof(tokens[1].c_str());
-		auto v = NULL;
-		auto w = NULL;
+		auto v = 0;
+		auto w = 0;
 
 		if(param_space_vertex_element_size >= 2)
 			v = atof(tokens[2].c_str());
@@ -416,17 +430,15 @@ init()
 	vector<GLfloat> normal_brute_force;
 	for(auto idx : tmp->vertex_indicies)
 	{
-		vertex_brute_force.push_back(tmp->vertices[4*idx]);
-		vertex_brute_force.push_back(tmp->vertices[4*idx+1]);
-		vertex_brute_force.push_back(tmp->vertices[4*idx+2]);
-		vertex_brute_force.push_back(tmp->vertices[4*idx+3]);
+		for(int i = 0; i < tmp->vertex_element_size; i++) {
+			vertex_brute_force.push_back(tmp->vertices[tmp->vertex_element_size*idx + i]);
+		}
 	}
 	for(auto n_idx : tmp->normal_indicies)
 	{
-		normal_brute_force.push_back(tmp->normals[3*n_idx]);
-		normal_brute_force.push_back(tmp->normals[3*n_idx+1]);
-		normal_brute_force.push_back(tmp->normals[3*n_idx+2]);
-		normal_brute_force.push_back((GLfloat)(0.0f));
+		for(int i = 0; i < tmp->normal_element_size; i++) {
+			normal_brute_force.push_back(tmp->normals[tmp->normal_element_size*n_idx + i]);
+		}
 	}
 	auto num_bytes_vert_data = sizeof(GLfloat) * vertex_brute_force.size();
 	auto num_bytes_norm_data = sizeof(GLfloat) * normal_brute_force.size();
@@ -454,19 +466,19 @@ init()
     // set up vertex arrays
     GLuint vPosition = glGetAttribLocation( program, "vPosition" );
     glEnableVertexAttribArray( vPosition );
-    glVertexAttribPointer( vPosition, 4, GL_FLOAT, GL_FALSE, 0,
+    glVertexAttribPointer( vPosition, tmp->vertex_element_size, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(0) );
 
     GLuint vNormal = glGetAttribLocation( program, "vNormal" );
     glEnableVertexAttribArray( vNormal );
-    glVertexAttribPointer( vNormal, 4, GL_FLOAT, GL_FALSE, 0,
+    glVertexAttribPointer( vNormal, tmp->normal_element_size, GL_FLOAT, GL_FALSE, 0,
 		BUFFER_OFFSET(num_bytes_vert_data));
 
 
     // Initialize shader lighting parameters
     // RAM: No need to change these...we'll learn about the details when we
     // cover Illumination and Shading
-    point4 light_position( 1.5, 0.5, -2.0, 1.0 );
+    point4 light_position( 1.5, 0.5, 2.0, 1.0 );
     color4 light_ambient( 0.2, 0.2, 0.2, 1.0 );
     color4 light_diffuse( 1.0, 1.0, 1.0, 1.0 );
     color4 light_specular( 1.0, 1.0, 1.0, 1.0 );
@@ -500,7 +512,7 @@ init()
 
 
     mat4 p = Perspective(45, 1.0, 0.1, 10.0);
-    point4  eye( 2.0, -2.0, -2.0, 1.0);
+    point4  eye( -4.0, -4.0, 4.0, 1.0);
     point4  at( 0.0, 0.0, 0.0, 1.0 );
     vec4    up( 0.0, 1.0, 0.0, 0.0 );
 
