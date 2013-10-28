@@ -108,9 +108,9 @@ public:
 	vector<GLfloat> param_space_vertices;
 	vector<GLfloat> texture_coords;
 	vector<GLfloat> normals;
-	vector<GLuint> vertex_faces;
-	vector<GLuint> texture_coords_faces;
-	vector<GLuint> normal_faces;
+	vector<GLuint> vertex_indicies;
+	vector<GLuint> texture_coord_indicies;
+	vector<GLuint> normal_indicies;
 
 	// file characteristics / metadata
 	string filename;
@@ -174,12 +174,12 @@ ObjObject::ObjObject(string in_filename)
 
 int ObjObject::add_face(GLint vertex_idx, GLint texture_coord_idx, GLint normal_idx)
 {
-	this->vertex_faces.push_back(vertex_idx);
-	if(texture_coord_idx != NULL)
-		this->texture_coords_faces.push_back(texture_coord_idx);
-	if(normal_idx != NULL)
-		this->normal_faces.push_back(normal_idx);
-	return vertex_faces.size();
+	this->vertex_indicies.push_back(vertex_idx);
+	if(texture_coord_idx != -1)
+		this->texture_coord_indicies.push_back(texture_coord_idx);
+	if(normal_idx != -1)
+		this->normal_indicies.push_back(normal_idx);
+	return vertex_indicies.size();
 }
 
 int ObjObject::add_vertex(GLfloat x, GLfloat y, GLfloat z, GLfloat w)
@@ -296,7 +296,7 @@ int ObjObject::load_from_file(string in_filename)
 			for(auto idx_string : face)
 			{
 				if(idx_string == ""){
-					face_idx_vals.push_back(NULL);
+					face_idx_vals.push_back(-1);
 				} else {
 					face_idx_vals.push_back(atoi(idx_string.c_str()));
 				}
@@ -351,7 +351,7 @@ int ObjObject::load_from_file(string in_filename)
 		cout << "Loaded file '" << this->filename << "'" << endl;
 		cout << "# of Verticeis: " << this->vertices.size() / this->vertex_element_size << endl;
 		cout << "# of Normals: " << this->normals.size() / 3 << endl;
-		cout << "# of faces: " << this->vertex_faces.size() << endl;
+		cout << "# of faces: " << this->vertex_indicies.size() << endl;
 		bad_file = false;
 		status = 0;
 		in_file.close();
@@ -401,52 +401,75 @@ int load_scene_by_file(string filename, vector<string>& obj_filename_list)
 // Create a vertex array object
 GLuint vao;
 
-GLuint buffers[2];
+GLuint buffers[4];
 GLint num_indicies;
-
+GLint n_num_indicies;
+GLuint *indicies_data;
+GLuint *n_indicies_data;
+GLfloat *vertex_data;
+GLfloat *normal_data;
 // OpenGL initialization
 void
 init()
 {
-	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "bunnyNS.obj");
-
+	colorcube();
+	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "cube.obj");
+	
+	for(int i = 0; i < tmp->vertices.size() - 2; i += tmp->vertex_element_size)
+	{
+		cout << "v " << tmp->vertices[i] << " " << tmp->vertices[i + 1] << " " << tmp->vertices[i + 2] << endl;
+	}
+	for(int j = 0; j < tmp->normals.size() - 2; j += 3)
+	{
+		cout << "vn " << tmp->normals[j] << " " << tmp->normals[j + 1] << " " << tmp->normals[j + 2] << endl;
+	}
+	for(auto idx : tmp->vertex_indicies)
+	{
+		cout << "fv " << idx << endl;
+	}
+	cout << "normal_indicies.size(): " << tmp->normal_indicies.size() << endl;
+	for(auto idx : tmp->normal_indicies)
+	{
+		cout << "fn " << idx << endl;
+	}
 	glGenVertexArrays( 1, &vao );
 	glBindVertexArray( vao );
-	glGenBuffers( 2, buffers );
+	glGenBuffers( 4, buffers );
 	
-	auto vertex_data = tmp->vertices.data();
-	auto normal_data = tmp->normals.data();
-	auto indicies_data = tmp->vertex_faces.data();
+	vertex_data = tmp->vertices.data();
+	normal_data = tmp->normals.data();
+	indicies_data = tmp->vertex_indicies.data();
+	n_indicies_data = tmp->normal_indicies.data();
 
 	auto num_bytes_vertex_data = sizeof(GLfloat) * tmp->vertices.size();
 	auto num_bytes_normal_data = sizeof(GLfloat) * tmp->normals.size();
-	auto num_bytes_indicies = sizeof(GLuint) * tmp->vertex_faces.size();
-	num_indicies = tmp->vertex_faces.size();
-
-	glBindBuffer( GL_ARRAY_BUFFER, buffers[0] );
-	glBufferData( GL_ARRAY_BUFFER, num_bytes_vertex_data + num_bytes_normal_data, NULL, GL_STATIC_DRAW );
-	glBufferSubData( GL_ARRAY_BUFFER, 0, num_bytes_vertex_data, vertex_data );
-	glBufferSubData( GL_ARRAY_BUFFER, num_bytes_vertex_data, num_bytes_normal_data, normal_data );
-
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[1] );
-	glBufferData( GL_ELEMENT_ARRAY_BUFFER, num_bytes_indicies, NULL, GL_STATIC_DRAW );
-	glBufferSubData( GL_ELEMENT_ARRAY_BUFFER, 0, num_bytes_indicies, indicies_data );
-
-    // Load shaders and use the resulting shader program
+	auto num_bytes_indicies = sizeof(GLuint) * tmp->vertex_indicies.size();
+	auto num_bytes_n_indicies = sizeof(GLuint) * tmp->normal_indicies.size();
+	num_indicies = tmp->vertex_indicies.size();
+	n_num_indicies = tmp->normal_indicies.size();
     GLuint program = InitShader( "./src/vshader.glsl", "./src/fshader.glsl" );
     glUseProgram( program );
+	
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[0] );
+	glBufferData( GL_ELEMENT_ARRAY_BUFFER, num_bytes_indicies, indicies_data, GL_STATIC_DRAW );
 
-	glBindBuffer( GL_ARRAY_BUFFER, buffers[0] );
-    // set up vertex arrays
+	glBindBuffer( GL_ARRAY_BUFFER, buffers[1] );
     GLuint vPosition = glGetAttribLocation( program, "vPosition" );
     glEnableVertexAttribArray( vPosition );
     glVertexAttribPointer( vPosition, tmp->vertex_element_size, GL_FLOAT, GL_FALSE, 0,
 			   BUFFER_OFFSET(0) );
+	glBufferData( GL_ARRAY_BUFFER, num_bytes_vertex_data, vertex_data, GL_STATIC_DRAW );
 
+
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[2] );
+	glBufferData( GL_ELEMENT_ARRAY_BUFFER, num_bytes_n_indicies, n_indicies_data, GL_STATIC_DRAW );
+
+	glBindBuffer( GL_ARRAY_BUFFER, buffers[3] );
     GLuint vNormal = glGetAttribLocation( program, "vNormal" );
     glEnableVertexAttribArray( vNormal );
     glVertexAttribPointer( vNormal, 3, GL_FLOAT, GL_FALSE, 0,
 		BUFFER_OFFSET(num_bytes_normal_data) );
+	glBufferData( GL_ARRAY_BUFFER, num_bytes_normal_data, normal_data, GL_STATIC_DRAW );
 
 
     // Initialize shader lighting parameters
@@ -490,7 +513,7 @@ init()
     point4  at( 0.0, 0.0, 0.0, 1.0 );
     vec4    up( 0.0, 1.0, 0.0, 0.0 );
 
-
+	
     mat4  mv = LookAt( eye, at, up );
     //vec4 v = vec4(0.0, 0.0, 1.0, 1.0);
 
@@ -508,8 +531,12 @@ void
 display( void )
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[1] );
-	glDrawElements( GL_TRIANGLES, num_indicies, GL_UNSIGNED_INT, (void *)0);
+	glBindBuffer( GL_ARRAY_BUFFER, buffers[1] );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[0] );
+	glDrawElements( GL_TRIANGLES, num_indicies, GL_UNSIGNED_INT, BUFFER_OFFSET(0) );
+	glBindBuffer( GL_ARRAY_BUFFER, buffers[3] );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, buffers[2]);
+	glDrawElements( GL_TRIANGLES, n_num_indicies, GL_UNSIGNED_INT, BUFFER_OFFSET(0) );
     glutSwapBuffers();
 }
 
