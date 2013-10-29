@@ -54,7 +54,6 @@ int load_scene_by_file(string filename, vector<string>& obj_filename_list)
 	if(input_scene_file.is_open())
 	{
 		getline(input_scene_file, line);
-		cout << "Dimension(s) of file: '" << line << "'" << endl;
 		while(!input_scene_file.eof())
 		{
 			getline(input_scene_file, line);
@@ -73,7 +72,9 @@ int load_scene_by_file(string filename, vector<string>& obj_filename_list)
 void
 init(vector<Obj*> obj_data, GLfloat in_eye[3], GLfloat in_at[3], GLfloat in_up[3])
 {
-	Obj *tmp = new Obj(DATA_DIRECTORY_PATH + "bunnyNS.obj");
+	// use index arrays to build one brute force ordered array of all vertices, including duplicates.
+	// per OBJ there is one VBO, containing vertex data and normal data
+	Obj *tmp = new Obj(DATA_DIRECTORY_PATH + "teapotNS.obj");
 	vector<GLfloat> vertex_brute_force;
 	vector<GLfloat> normal_brute_force;
 
@@ -94,6 +95,7 @@ init(vector<Obj*> obj_data, GLfloat in_eye[3], GLfloat in_at[3], GLfloat in_up[3
 	vertex_brute_force.shrink_to_fit();
 	normal_brute_force.shrink_to_fit();
 	num_verts = new GLint(vertex_brute_force.size() / tmp->vertex_element_size);
+
     // Create a vertex array object
     GLuint vao;
     glGenVertexArrays( 1, &vao );
