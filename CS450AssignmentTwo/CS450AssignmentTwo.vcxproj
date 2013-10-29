@@ -22,10 +22,12 @@
     <ClInclude Include="include\GL\glut.h" />
     <ClInclude Include="include\mat.h" />
     <ClInclude Include="include\vec.h" />
+    <ClInclude Include="src\Obj.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\InitShader.cpp" />
     <ClCompile Include="src\CS450AssignmentTwo.cpp" />
+    <ClCompile Include="src\Obj.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\fshader.glsl" />

@@ -48,12 +48,18 @@
     <ClInclude Include="include\GL\glut.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Obj.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\InitShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\CS450AssignmentTwo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Obj.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
