@@ -2,13 +2,14 @@
 #include <string>
 #include "Angel.h"
 
+// for reading in and representing Wavefront OBJ files
 class Obj
 {
 public:
 	// constructors & destructors
 	Obj();
 	Obj(std::string filename);
-	~Obj();
+	~Obj() {};
 
 	// methods
 	int load_from_file(std::string filename);

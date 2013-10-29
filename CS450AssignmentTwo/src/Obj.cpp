@@ -4,7 +4,8 @@
 
 using namespace std;
 
-vector<string> inline StringSplit(const string &source, const char *delimiter = " ", bool keepEmpty = false)
+// utility: thread-safe string splitting
+vector<string> StringSplit(const string &source, const char *delimiter = " ", bool keepEmpty = false)
 {
     std::vector<std::string> results;
 
@@ -26,14 +27,6 @@ vector<string> inline StringSplit(const string &source, const char *delimiter = 
     }
 
     return results;
-}
-
-Obj::~Obj()
-{
-	vertex_element_size = NULL;
-	texture_coord_element_size = NULL;
-	param_space_vertex_element_size = NULL;
-	bad_file = NULL;
 }
 
 Obj::Obj()
@@ -112,6 +105,7 @@ int Obj::add_param_vertex(GLfloat u, GLfloat  v, GLfloat w)
 	return this->param_space_vertices.size();
 }
 
+// most important function. calls above functions for different attributes in file.
 int Obj::load_from_file(string in_filename)
 {
 	filename = in_filename;

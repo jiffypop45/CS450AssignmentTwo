@@ -55,7 +55,6 @@ int load_scene_by_file(string filename, vector<string>& obj_filename_list)
 	if(input_scene_file.is_open())
 	{
 		getline(input_scene_file, line);
-		cout << "Dimension(s) of file: '" << line << "'" << endl;
 		while(!input_scene_file.eof())
 		{
 			getline(input_scene_file, line);
