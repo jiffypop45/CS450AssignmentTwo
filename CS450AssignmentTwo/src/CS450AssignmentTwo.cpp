@@ -15,78 +15,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <sstream>
 #include <vector>
 using namespace std;
-// globals
-const std::string DATA_DIRECTORY_PATH = "./Data/";
-int *idx_size = new int();
-
-typedef Angel::vec4  color4;
-typedef Angel::vec4  point4;
-const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
-
-GLuint  model_view;  // model-view matrix uniform shader variable location
-GLuint  projection; // projection matrix uniform shader variable location
-
-
-point4 points[NumVertices];
-vec4   normals[NumVertices];
-
-// Vertices of a unit cube centered at origin, sides aligned with axes
-point4 vertices[8] = {
-    point4( -0.5, -0.5,  0.5, 1.0 ),
-    point4( -0.5,  0.5,  0.5, 1.0 ),
-    point4(  0.5,  0.5,  0.5, 1.0 ),
-    point4(  0.5, -0.5,  0.5, 1.0 ),
-    point4( -0.5, -0.5, -0.5, 1.0 ),
-    point4( -0.5,  0.5, -0.5, 1.0 ),
-    point4(  0.5,  0.5, -0.5, 1.0 ),
-    point4(  0.5, -0.5, -0.5, 1.0 )
-};
-
-//----------------------------------------------------------------------------
-//----------------------------------------------------------------------------
-
-// quad generates two triangles for each face and assigns colors
-//    to the vertices.  Notice we keep the relative ordering when constructing the tris
-int Index = 0;
-void
-quad( int a, int b, int c, int d )
-{
-
-
-  vec4 u = vertices[b] - vertices[a];
-  vec4 v = vertices[c] - vertices[b];
-
-  vec4 normal = normalize( cross(u, v) );
-  normal[3] = 0.0;
-
-  normals[Index] = normal; points[Index] = vertices[a]; Index++;
-  normals[Index] = normal; points[Index] = vertices[b]; Index++;
-  normals[Index] = normal; points[Index] = vertices[c]; Index++;
-  normals[Index] = normal; points[Index] = vertices[a]; Index++;
-  normals[Index] = normal; points[Index] = vertices[c]; Index++;
-  normals[Index] = normal; points[Index] = vertices[d]; Index++;
-}
-
-//----------------------------------------------------------------------------
-
-// generate 12 triangles: 36 vertices and 36 colors
-void
-colorcube()
-{
-  quad( 4, 5, 6, 7 );
-  quad( 5, 4, 0, 1 );
-  quad( 1, 0, 3, 2 );
-  quad( 2, 3, 7, 6 );
-  quad( 3, 0, 4, 7 );
-  quad( 6, 5, 1, 2 );
-}
-
-//----------------------------------------------------------------------------
-
-/* ObjObject serves to conveniently package the data found in an obj file. */
 class ObjObject
 {
 public:
@@ -122,6 +52,8 @@ public:
 	int texture_coord_element_size;
 	int param_space_vertex_element_size;
 };
+
+/* ObjObject serves to conveniently package the data found in an obj file. */
 
 vector<string> inline StringSplit(const string &source, const char *delimiter = " ", bool keepEmpty = false)
 {
@@ -379,6 +311,76 @@ int ObjObject::load_from_file(string in_filename)
 }
 // END: ObjObject implementation
 
+using namespace std;
+// globals
+const std::string DATA_DIRECTORY_PATH = "./Data/";
+int *idx_size = new int();
+
+typedef Angel::vec4  color4;
+typedef Angel::vec4  point4;
+const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
+
+GLuint  model_view;  // model-view matrix uniform shader variable location
+GLuint  projection; // projection matrix uniform shader variable location
+
+
+point4 points[NumVertices];
+vec4   normals[NumVertices];
+
+// Vertices of a unit cube centered at origin, sides aligned with axes
+point4 vertices[8] = {
+    point4( -0.5, -0.5,  0.5, 1.0 ),
+    point4( -0.5,  0.5,  0.5, 1.0 ),
+    point4(  0.5,  0.5,  0.5, 1.0 ),
+    point4(  0.5, -0.5,  0.5, 1.0 ),
+    point4( -0.5, -0.5, -0.5, 1.0 ),
+    point4( -0.5,  0.5, -0.5, 1.0 ),
+    point4(  0.5,  0.5, -0.5, 1.0 ),
+    point4(  0.5, -0.5, -0.5, 1.0 )
+};
+
+//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+
+// quad generates two triangles for each face and assigns colors
+//    to the vertices.  Notice we keep the relative ordering when constructing the tris
+int Index = 0;
+void
+quad( int a, int b, int c, int d )
+{
+
+
+  vec4 u = vertices[b] - vertices[a];
+  vec4 v = vertices[c] - vertices[b];
+
+  vec4 normal = normalize( cross(u, v) );
+  normal[3] = 0.0;
+
+  normals[Index] = normal; points[Index] = vertices[a]; Index++;
+  normals[Index] = normal; points[Index] = vertices[b]; Index++;
+  normals[Index] = normal; points[Index] = vertices[c]; Index++;
+  normals[Index] = normal; points[Index] = vertices[a]; Index++;
+  normals[Index] = normal; points[Index] = vertices[c]; Index++;
+  normals[Index] = normal; points[Index] = vertices[d]; Index++;
+}
+
+//----------------------------------------------------------------------------
+
+// generate 12 triangles: 36 vertices and 36 colors
+void
+colorcube()
+{
+  quad( 4, 5, 6, 7 );
+  quad( 5, 4, 0, 1 );
+  quad( 1, 0, 3, 2 );
+  quad( 2, 3, 7, 6 );
+  quad( 3, 0, 4, 7 );
+  quad( 6, 5, 1, 2 );
+}
+
+//----------------------------------------------------------------------------
+
+
 int load_scene_by_file(string filename, vector<string>& obj_filename_list)
 {
 	ifstream input_scene_file;
@@ -423,7 +425,7 @@ GLfloat *vertex_data;
 GLfloat *normal_data;
 // OpenGL initialization
 void
-init()
+init(GLfloat in_eye[3], GLfloat in_at[3], GLfloat in_up[3])
 {
 	ObjObject *tmp = new ObjObject(DATA_DIRECTORY_PATH + "iso_sphere.obj");
 	vector<GLfloat> vertex_brute_force;
@@ -516,9 +518,9 @@ init()
 
 
     mat4 p = Perspective(45, 1.0, 0.1, 10.0);
-    point4  eye( 0., .0, 2., 1.0);
-    point4  at( 0.0, 0.0, 0.0, 1.0 );
-    vec4    up( 0.0, 1.0, 0.0, 0.0 );
+    point4  eye( in_eye[0], in_eye[1], in_eye[2], 1.0);
+    point4  at( in_at[0], in_at[1], in_at[2], 1.0 );
+    vec4    up( in_up[0], in_up[1], in_up[2], 0.0 );
 
 
     mat4  mv = LookAt( eye, at, up );
@@ -645,7 +647,7 @@ int main(int argc, char** argv)
     glewInit();
 #endif
 
-    init();
+    init(eye_position, at_position, up_vector);
 
     //NOTE:  callbacks must go after window is created!!!
     glutKeyboardFunc(keyboard);
