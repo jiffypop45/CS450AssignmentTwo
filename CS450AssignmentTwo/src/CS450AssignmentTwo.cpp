@@ -33,13 +33,14 @@ GLuint  projection; // projection matrix uniform shader variable location
 
 GLuint vao;
 
-GLuint buffers[4];
+GLuint *buffers;
 GLint num_indicies;
-GLint *num_verts = new GLint();
+GLint *num_verts;
 GLuint *indicies_data;
 GLuint *n_indicies_data;
 GLfloat *vertex_data;
 GLfloat *normal_data;
+GLint num_objects;
 
 int load_scene_by_file(string filename, vector<string>& obj_filename_list)
 {
@@ -73,55 +74,68 @@ int load_scene_by_file(string filename, vector<string>& obj_filename_list)
 void
 init(vector<Obj*> obj_data, GLfloat in_eye[3], GLfloat in_at[3], GLfloat in_up[3])
 {
-	Obj *tmp = new Obj(DATA_DIRECTORY_PATH + "bunnyNS.obj");
-	vector<GLfloat> vertex_brute_force;
-	vector<GLfloat> normal_brute_force;
-
-	for(auto idx : tmp->vertex_indicies)
-	{
-		for(int i = 0; i < tmp->vertex_element_size; i++) {
-			vertex_brute_force.push_back(tmp->vertices[tmp->vertex_element_size*idx + i]);
-		}
-	}
-	for(auto n_idx : tmp->normal_indicies)
-	{
-		for(int i = 0; i < tmp->normal_element_size; i++) {
-			normal_brute_force.push_back(tmp->normals[tmp->normal_element_size*n_idx + i]);
-		}
-	}
-	auto num_bytes_vert_data = sizeof(GLfloat) * vertex_brute_force.size();
-	auto num_bytes_norm_data = sizeof(GLfloat) * normal_brute_force.size();
-	vertex_brute_force.shrink_to_fit();
-	normal_brute_force.shrink_to_fit();
-	num_verts = new GLint(vertex_brute_force.size() / tmp->vertex_element_size);
     // Create a vertex array object
     GLuint vao;
     glGenVertexArrays( 1, &vao );
     glBindVertexArray( vao );
-
-    // Create and initialize a buffer object
-    GLuint buffer;
-    glGenBuffers( 1, &buffer );
-    glBindBuffer( GL_ARRAY_BUFFER, buffer );
-	glBufferData( GL_ARRAY_BUFFER, num_bytes_vert_data + num_bytes_norm_data,
-		  NULL, GL_STATIC_DRAW );
-    glBufferSubData( GL_ARRAY_BUFFER, 0, num_bytes_vert_data, vertex_brute_force.data() );
-	glBufferSubData( GL_ARRAY_BUFFER, num_bytes_vert_data, num_bytes_norm_data, normal_brute_force.data() );
-
+	
     // Load shaders and use the resulting shader program
     GLuint program = InitShader( "./src/vshader.glsl", "./src/fshader.glsl" );
     glUseProgram( program );
 
-    // set up vertex arrays
-    GLuint vPosition = glGetAttribLocation( program, "vPosition" );
-    glEnableVertexAttribArray( vPosition );
-    glVertexAttribPointer( vPosition, tmp->vertex_element_size, GL_FLOAT, GL_FALSE, 0,
-			   BUFFER_OFFSET(0) );
+	num_objects = obj_data.size();
+	buffers = (GLuint*)malloc(sizeof(GLuint) * obj_data.size());
+	glGenBuffers( obj_data.size(), buffers);
 
-    GLuint vNormal = glGetAttribLocation( program, "vNormal" );
-    glEnableVertexAttribArray( vNormal );
-    glVertexAttribPointer( vNormal, tmp->normal_element_size, GL_FLOAT, GL_FALSE, 0,
-		BUFFER_OFFSET(num_bytes_vert_data));
+	num_verts = (GLint*)malloc(sizeof(GLint) * obj_data.size());
+	Obj *tmp;
+	vector<vector<GLfloat>> vertex_brute_force;
+	vector<vector<GLfloat>> normal_brute_force;
+	for(int buff_idx = 0; buff_idx < obj_data.size(); buff_idx++)
+	{
+		tmp = obj_data[buff_idx];
+		vertex_brute_force.push_back(vector<GLfloat>());
+		normal_brute_force.push_back(vector<GLfloat>());
+		for(auto idx : tmp->vertex_indicies)
+		{
+			for(int i = 0; i < tmp->vertex_element_size; i++) {
+				vertex_brute_force[i].push_back(tmp->vertices[tmp->vertex_element_size*idx + i]);
+			}
+		}
+		for(auto n_idx : tmp->normal_indicies)
+		{
+			for(int i = 0; i < tmp->normal_element_size; i++) {
+				normal_brute_force[i].push_back(tmp->normals[tmp->normal_element_size*n_idx + i]);
+			}
+		}
+		auto num_bytes_vert_data = sizeof(GLfloat) * vertex_brute_force.size();
+		auto num_bytes_norm_data = sizeof(GLfloat) * normal_brute_force.size();
+		vertex_brute_force.shrink_to_fit();
+		normal_brute_force.shrink_to_fit();
+		num_verts[buff_idx] = vertex_brute_force.size() / tmp->vertex_element_size;
+
+		
+		// Create and initialize a buffer object
+		glBindBuffer( GL_ARRAY_BUFFER, buffers[buff_idx] );
+		glBufferData( GL_ARRAY_BUFFER, num_bytes_vert_data + num_bytes_norm_data,
+			  NULL, GL_STATIC_DRAW );
+		glBufferSubData( GL_ARRAY_BUFFER, 0, num_bytes_vert_data, vertex_brute_force[buff_idx].data() );
+		glBufferSubData( GL_ARRAY_BUFFER, num_bytes_vert_data, num_bytes_norm_data, normal_brute_force[buff_idx].data() );
+		
+		// set up vertex arrays
+		GLuint vPosition = glGetAttribLocation( program, "vPosition" );
+		glEnableVertexAttribArray( vPosition );
+		glVertexAttribPointer( vPosition, tmp->vertex_element_size, GL_FLOAT, GL_FALSE, 0,
+				   BUFFER_OFFSET(0) );
+
+		GLuint vNormal = glGetAttribLocation( program, "vNormal" );
+		glEnableVertexAttribArray( vNormal );
+		glVertexAttribPointer( vNormal, tmp->normal_element_size, GL_FLOAT, GL_FALSE, 0,
+			BUFFER_OFFSET(num_bytes_vert_data));
+	}
+
+
+
 
 
     // Initialize shader lighting parameters
@@ -183,7 +197,11 @@ void
 display( void )
 {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-	glDrawArrays(GL_TRIANGLES, 0, *num_verts);
+	for(int i = 0; i < num_objects; i++)
+	{
+		glBindBuffer(GL_ARRAY_BUFFER, buffers[i]);
+		glDrawArrays(GL_TRIANGLES, 0, num_verts[i]);
+	}
     glutSwapBuffers();
 }
 
