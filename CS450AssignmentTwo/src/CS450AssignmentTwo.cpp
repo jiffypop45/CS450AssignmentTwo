@@ -98,20 +98,20 @@ init(vector<Obj*> obj_data, GLfloat in_eye[3], GLfloat in_at[3], GLfloat in_up[3
 		for(auto idx : tmp->vertex_indicies)
 		{
 			for(int i = 0; i < tmp->vertex_element_size; i++) {
-				vertex_brute_force[i].push_back(tmp->vertices[tmp->vertex_element_size*idx + i]);
+				vertex_brute_force[buff_idx].push_back(tmp->vertices[tmp->vertex_element_size*idx + i]);
 			}
 		}
 		for(auto n_idx : tmp->normal_indicies)
 		{
 			for(int i = 0; i < tmp->normal_element_size; i++) {
-				normal_brute_force[i].push_back(tmp->normals[tmp->normal_element_size*n_idx + i]);
+				normal_brute_force[buff_idx].push_back(tmp->normals[tmp->normal_element_size*n_idx + i]);
 			}
 		}
-		auto num_bytes_vert_data = sizeof(GLfloat) * vertex_brute_force.size();
-		auto num_bytes_norm_data = sizeof(GLfloat) * normal_brute_force.size();
-		vertex_brute_force.shrink_to_fit();
-		normal_brute_force.shrink_to_fit();
-		num_verts[buff_idx] = vertex_brute_force.size() / tmp->vertex_element_size;
+		auto num_bytes_vert_data = sizeof(GLfloat) * vertex_brute_force[buff_idx].size();
+		auto num_bytes_norm_data = sizeof(GLfloat) * normal_brute_force[buff_idx].size();
+		vertex_brute_force[buff_idx].shrink_to_fit();
+		normal_brute_force[buff_idx].shrink_to_fit();
+		num_verts[buff_idx] = vertex_brute_force[buff_idx].size() / tmp->vertex_element_size;
 
 		
 		// Create and initialize a buffer object
